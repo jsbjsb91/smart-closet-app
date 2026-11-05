@@ -38,7 +38,15 @@ import {
   Cake,
   ShoppingBag,
   ShieldCheck,
-  Download
+  Download,
+  Footprints,
+  Utensils,
+  PartyPopper,
+  Music,
+  Moon,
+  Heart,
+  CloudRain,
+  RotateCcw
 } from 'lucide-react';
 import {
   hashPasswordSecure,
@@ -81,10 +89,10 @@ const WEEK_DAYS = [
   { id: 'Lun', full: 'Lunes', defaultOccasion: 'Work' },
   { id: 'Mar', full: 'Martes', defaultOccasion: 'Work' },
   { id: 'Mié', full: 'Miércoles', defaultOccasion: 'Work' },
-  { id: 'Jue', full: 'Jueves', defaultOccasion: 'Work' },
-  { id: 'Vie', full: 'Viernes', defaultOccasion: 'Work' },
-  { id: 'Sáb', full: 'Sábado', defaultOccasion: 'Going Out' },
-  { id: 'Dom', full: 'Domingo', defaultOccasion: 'Going Out' }
+  { id: 'Jue', full: 'Jueves', defaultOccasion: 'Dinner' },
+  { id: 'Vie', full: 'Viernes', defaultOccasion: 'Going Out' },
+  { id: 'Sáb', full: 'Sábado', defaultOccasion: 'Party' },
+  { id: 'Dom', full: 'Domingo', defaultOccasion: 'Walk' }
 ];
 
 // Helpers de Ficha Morfológica (Edad y Talla Recomendada para Tiendas)
@@ -139,14 +147,14 @@ const getDefaultSubcategory = (category) => {
   return 'Camisetas';
 };
 
-// Datos iniciales de ejemplo
+// Datos iniciales de ejemplo con multietiquetado enriquecido para todas las ocasiones
 const INITIAL_GARMENTS = [
   {
     id: '1',
     name: 'Blazer Entallada Negra',
     category: 'Outerwear',
     subcategory: 'Blazers',
-    occasion: ['Work', 'Going Out'],
+    occasion: ['Work', 'Dinner', 'Elegant Night', 'Wedding', 'Going Out'],
     warmth: 3,
     comfort: 3,
     color: 'Negro',
@@ -160,7 +168,7 @@ const INITIAL_GARMENTS = [
     name: 'Camiseta Algodón Blanca',
     category: 'Top',
     subcategory: 'Camisetas',
-    occasion: ['Work', 'Going Out', 'Sport'],
+    occasion: ['Work', 'Walk', 'Going Out', 'Dinner', 'Festival', 'Gym'],
     warmth: 1,
     comfort: 5,
     color: 'Blanco',
@@ -174,7 +182,7 @@ const INITIAL_GARMENTS = [
     name: 'Pantalón Chino Beige',
     category: 'Bottom',
     subcategory: 'Pantalones',
-    occasion: ['Work', 'Going Out'],
+    occasion: ['Work', 'Walk', 'Going Out', 'Dinner', 'Elegant Night', 'Wedding'],
     warmth: 2,
     comfort: 4,
     color: 'Beige',
@@ -188,7 +196,7 @@ const INITIAL_GARMENTS = [
     name: 'Zapatillas Blancas Cuero',
     category: 'Footwear',
     subcategory: 'Calzado',
-    occasion: ['Work', 'Going Out', 'Sport'],
+    occasion: ['Work', 'Walk', 'Going Out', 'Party', 'Festival', 'Gym'],
     warmth: 2,
     comfort: 5,
     color: 'Blanco',
@@ -202,7 +210,7 @@ const INITIAL_GARMENTS = [
     name: 'Chubasquero Técnico Azul',
     category: 'Outerwear',
     subcategory: 'Abrigos',
-    occasion: ['Work', 'Going Out', 'Sport'],
+    occasion: ['Work', 'Walk', 'Going Out', 'Festival', 'Gym'],
     warmth: 4,
     comfort: 4,
     color: 'Azul Marino',
@@ -216,7 +224,7 @@ const INITIAL_GARMENTS = [
     name: 'Sudadera Gris Capucha',
     category: 'Top',
     subcategory: 'Sudaderas',
-    occasion: ['Going Out', 'Sport'],
+    occasion: ['Walk', 'Going Out', 'Gym', 'Festival'],
     warmth: 4,
     comfort: 5,
     color: 'Gris',
@@ -230,7 +238,7 @@ const INITIAL_GARMENTS = [
     name: 'Jersey Punto Burdeos',
     category: 'Top',
     subcategory: 'Jerseys',
-    occasion: ['Work', 'Going Out'],
+    occasion: ['Work', 'Walk', 'Going Out', 'Dinner', 'Elegant Night'],
     warmth: 4,
     comfort: 4,
     color: 'Burdeos',
@@ -241,10 +249,17 @@ const INITIAL_GARMENTS = [
   }
 ];
 
+// Opciones completas de Look y Planes (Multietiqueta)
 const OCCASIONS = [
-  { id: 'Work', label: 'Trabajo', icon: Briefcase },
-  { id: 'Going Out', label: 'Casual / Salir', icon: Coffee },
-  { id: 'Sport', label: 'Deporte', icon: Dumbbell }
+  { id: 'Work', label: 'Trabajo', emoji: '💼', icon: Briefcase },
+  { id: 'Walk', label: 'Paseo', emoji: '🚶', icon: Footprints },
+  { id: 'Going Out', label: 'Salir', emoji: '☕', icon: Coffee },
+  { id: 'Dinner', label: 'Cenar', emoji: '🍽️', icon: Utensils },
+  { id: 'Party', label: 'Fiesta', emoji: '🎉', icon: PartyPopper },
+  { id: 'Festival', label: 'Festival', emoji: '🎪', icon: Music },
+  { id: 'Elegant Night', label: 'Noche elegante', emoji: '🌙', icon: Moon },
+  { id: 'Wedding', label: 'Boda', emoji: '💍', icon: Heart },
+  { id: 'Gym', label: 'Gimnasio', emoji: '🏋️', icon: Dumbbell }
 ];
 
 const WARMTH_LEVELS = [
@@ -323,6 +338,7 @@ export default function App() {
   const [tripDays, setTripDays] = useState(3);
   const [tripOccasion, setTripOccasion] = useState('Going Out');
   const [tripWarmth, setTripWarmth] = useState(3);
+  const [tripIsRaining, setTripIsRaining] = useState(false);
   const [capsuleItems, setCapsuleItems] = useState([]);
   const [packedItemIds, setPackedItemIds] = useState([]);
 
@@ -957,16 +973,16 @@ export default function App() {
 
   const buildCoherentGarmentDefaults = (subcategory, color) => {
     const presetMap = {
-      Camisetas:    { warmth: 1, occasion: ['Going Out', 'Sport'], adj: 'Básica' },
-      Camisas:      { warmth: 3, occasion: ['Work', 'Going Out'], adj: 'Clásica' },
-      Sudaderas:    { warmth: 5, occasion: ['Going Out', 'Sport'], adj: 'Confort' },
-      Jerseys:      { warmth: 5, occasion: ['Work', 'Going Out'], adj: 'de Punto' },
-      Pantalones:   { warmth: 3, occasion: ['Work', 'Going Out'], adj: 'Chino' },
-      Vaqueros:     { warmth: 3, occasion: ['Going Out', 'Work'], adj: 'Denim' },
-      FaldasShorts: { warmth: 1, occasion: ['Going Out', 'Sport'], adj: 'Casual' },
-      Abrigos:      { warmth: 5, occasion: ['Work', 'Going Out'], adj: 'Térmico' },
-      Blazers:      { warmth: 3, occasion: ['Work', 'Going Out'], adj: 'Entallada' },
-      Calzado:      { warmth: 3, occasion: ['Work', 'Going Out', 'Sport'], adj: 'Urbano' }
+      Camisetas:    { warmth: 1, occasion: ['Walk', 'Going Out', 'Gym', 'Festival'], adj: 'Básica' },
+      Camisas:      { warmth: 3, occasion: ['Work', 'Dinner', 'Going Out', 'Elegant Night'], adj: 'Clásica' },
+      Sudaderas:    { warmth: 5, occasion: ['Walk', 'Going Out', 'Gym', 'Festival'], adj: 'Confort' },
+      Jerseys:      { warmth: 4, occasion: ['Work', 'Walk', 'Dinner', 'Going Out'], adj: 'de Punto' },
+      Pantalones:   { warmth: 3, occasion: ['Work', 'Dinner', 'Going Out', 'Elegant Night'], adj: 'Chino' },
+      Vaqueros:     { warmth: 3, occasion: ['Going Out', 'Walk', 'Work', 'Dinner', 'Party', 'Festival'], adj: 'Denim' },
+      FaldasShorts: { warmth: 1, occasion: ['Going Out', 'Party', 'Festival', 'Walk'], adj: 'Casual' },
+      Abrigos:      { warmth: 5, occasion: ['Work', 'Walk', 'Dinner', 'Going Out', 'Elegant Night'], adj: 'Térmico' },
+      Blazers:      { warmth: 3, occasion: ['Work', 'Dinner', 'Elegant Night', 'Wedding'], adj: 'Entallada' },
+      Calzado:      { warmth: 3, occasion: ['Work', 'Walk', 'Going Out', 'Dinner', 'Party', 'Gym'], adj: 'Urbano' }
     };
     const typeObj = GARMENT_TYPES.find(t => t.id === subcategory) || GARMENT_TYPES[0];
     const preset = presetMap[typeObj.id] || presetMap.Camisetas;
@@ -1014,7 +1030,7 @@ export default function App() {
   "subcategory": uno de ["Camisetas","Camisas","Sudaderas","Jerseys","Pantalones","Vaqueros","FaldasShorts","Abrigos","Blazers","Calzado"],
   "color": uno de ["Negro","Blanco","Gris","Beige","Azul Marino","Azul","Rojo","Burdeos","Verde","Rosa","Amarillo","Marrón"],
   "warmth": número entero entre 1 (fresco), 3 (templado) o 5 (abrigo),
-  "occasion": array con 1 a 3 valores de ["Work","Going Out","Sport"],
+  "occasion": array con 1 a 4 valores de ["Work","Walk","Going Out","Dinner","Party","Festival","Elegant Night","Wedding","Gym"],
   "name": nombre descriptivo corto en español (ej. "Camisa Oxford Azul", "Sudadera Gris Capucha")
 }`;
 
@@ -1033,7 +1049,7 @@ export default function App() {
         ? Number(parsed.warmth)
         : localSuggestion.warmth;
       const validOccasions = Array.isArray(parsed.occasion) && parsed.occasion.length > 0
-        ? parsed.occasion.filter(o => ['Work', 'Going Out', 'Sport'].includes(o))
+        ? parsed.occasion.filter(o => OCCASIONS.some(occ => occ.id === o))
         : localSuggestion.occasion;
 
       setNewGarment(prev => ({
@@ -1459,14 +1475,13 @@ export default function App() {
         score += 11;
         styleReason = 'registro ejecutivo moderno con blazer';
       }
-    } else if (occasion === 'Sport') {
-      if (hasSubcat('Blazers')) score -= 35;
-      if (hasSubcat('Camisas')) score -= 28;
-      if (hasSubcat('Jerseys')) score -= 15;
-      if (hasSubcat('Camisetas') || hasSubcat('Sudaderas')) {
-        score += 15;
-        styleReason = 'máxima libertad de movimiento deportivo';
+    } else if (occasion === 'Walk') {
+      if (hasSubcat('Blazers')) score -= 14;
+      if (hasSubcat('Camisetas') || hasSubcat('Jerseys') || hasSubcat('Sudaderas')) {
+        score += 14;
+        styleReason = 'look cómodo y relajado para caminar o pasear';
       }
+      if (hasSubcat('Calzado')) score += 5;
     } else if (occasion === 'Going Out') {
       if ((hasSubcat('Vaqueros') || hasSubcat('Pantalones')) && (hasSubcat('Camisas') || hasSubcat('Jerseys') || hasSubcat('Camisetas'))) {
         score += 12;
@@ -1476,17 +1491,67 @@ export default function App() {
         score += 15;
         styleReason = 'contraste elevado blazer & denim';
       }
+    } else if (occasion === 'Dinner') {
+      if (hasSubcat('Sudaderas')) score -= 22;
+      if (hasSubcat('Blazers') || hasSubcat('Camisas') || hasSubcat('Jerseys')) {
+        score += 16;
+        styleReason = 'toque smart-casual perfecto para cenar';
+      }
+      if (hasSubcat('Pantalones') || hasSubcat('Vaqueros')) score += 8;
+    } else if (occasion === 'Party') {
+      if (hasSubcat('Sudaderas')) score -= 14;
+      if (hasSubcat('Blazers') || hasSubcat('Camisas') || hasSubcat('FaldasShorts')) {
+        score += 15;
+        styleReason = 'estilo con carácter y presencia festiva nocturna';
+      }
+    } else if (occasion === 'Festival') {
+      if (hasSubcat('Blazers')) score -= 25;
+      if (hasSubcat('Camisetas') || hasSubcat('Sudaderas') || hasSubcat('FaldasShorts')) {
+        score += 16;
+        styleReason = 'look festivalero fresco y todoterreno';
+      }
+    } else if (occasion === 'Elegant Night') {
+      if (hasSubcat('Sudaderas')) score -= 30;
+      if (hasSubcat('FaldasShorts')) score -= 16;
+      if (hasSubcat('Camisetas')) score -= 12;
+      if (hasSubcat('Blazers') && (hasSubcat('Camisas') || hasSubcat('Jerseys')) && hasSubcat('Pantalones')) {
+        score += 24;
+        styleReason = 'máxima distinción y sobriedad para noche elegante';
+      } else if (hasSubcat('Blazers') || hasSubcat('Camisas')) {
+        score += 15;
+        styleReason = 'elegancia refinada nocturna';
+      }
+    } else if (occasion === 'Wedding') {
+      if (hasSubcat('Sudaderas')) score -= 45;
+      if (hasSubcat('FaldasShorts')) score -= 30;
+      if (hasSubcat('Camisetas')) score -= 25;
+      if (hasSubcat('Blazers') && hasSubcat('Camisas') && hasSubcat('Pantalones')) {
+        score += 30;
+        styleReason = 'porte formal impecable de etiqueta para boda';
+      } else if (hasSubcat('Blazers') || hasSubcat('Camisas')) {
+        score += 18;
+        styleReason = 'elegancia distinguida para ceremonia';
+      }
+    } else if (occasion === 'Gym' || occasion === 'Sport') {
+      if (hasSubcat('Blazers')) score -= 35;
+      if (hasSubcat('Camisas')) score -= 28;
+      if (hasSubcat('Jerseys')) score -= 18;
+      if (hasSubcat('Camisetas') || hasSubcat('Sudaderas') || hasSubcat('FaldasShorts')) {
+        score += 18;
+        styleReason = 'funcionalidad y transpirabilidad para entrenamiento activo';
+      }
     }
 
     // Adecuación explícita de las prendas a la ocasión seleccionada
     items.forEach(it => {
-      if (it?.occasion?.includes(occasion)) score += 4;
-      else score -= 5;
+      if (Array.isArray(it?.occasion) && it.occasion.includes(occasion)) score += 6;
+      else score -= 4;
     });
 
+    const occFound = OCCASIONS.find(o => o.id === occasion);
     return {
       score,
-      label: styleReason || (occasion === 'Work' ? 'corte formal equilibrado' : occasion === 'Sport' ? 'funcionalidad activa' : 'estilo casual relajado')
+      label: styleReason || (occFound ? `estilo ideal para ${occFound.label}` : 'estilo equilibrado')
     };
   };
 
@@ -1630,7 +1695,7 @@ export default function App() {
     }
 
     if (isRainingNow) {
-      parts.push(`Incluye capa exterior para lluvia (${temp}°C).`);
+      parts.push(`🌧️ Look adaptado a lluvia: incluye capa exterior protectora para ${temp}°C.`);
     } else if (targetWarmth >= 4) {
       parts.push(`Aislamiento térmico óptimo para ${temp}°C.`);
     } else if (targetWarmth <= 2) {
@@ -1768,9 +1833,20 @@ export default function App() {
           getSlotFromType(activeAnchor.subcategory, activeAnchor.category) === 'Outerwear'
         ) {
           candidateOuterwear = activeAnchor;
-        } else if (targetWarmth >= 3 || isRaining) {
+        } else if (isRaining || targetWarmth >= 3) {
           if (outerwears.length > 0) {
-            candidateOuterwear = outerwears[Math.floor(Math.random() * outerwears.length)];
+            if (isRaining) {
+              const rainOuter = outerwears.filter(o =>
+                (o.name?.toLowerCase().includes('chubasquero') ||
+                 o.name?.toLowerCase().includes('técnico') ||
+                 o.name?.toLowerCase().includes('abrigo') ||
+                 o.subcategory === 'Abrigos')
+              );
+              const pool = rainOuter.length > 0 ? rainOuter : outerwears;
+              candidateOuterwear = pool[Math.floor(Math.random() * pool.length)];
+            } else {
+              candidateOuterwear = outerwears[Math.floor(Math.random() * outerwears.length)];
+            }
           }
         }
 
@@ -1956,8 +2032,19 @@ export default function App() {
       const candidateFootwear = footwears[Math.floor(Math.random() * footwears.length)];
 
       let candidateOuterwear = null;
-      if ((targetWarmth >= 3 || isRaining) && outerwears.length > 0) {
-        candidateOuterwear = outerwears[Math.floor(Math.random() * outerwears.length)];
+      if ((isRaining || targetWarmth >= 3) && outerwears.length > 0) {
+        if (isRaining) {
+          const rainOuter = outerwears.filter(o =>
+            (o.name?.toLowerCase().includes('chubasquero') ||
+             o.name?.toLowerCase().includes('técnico') ||
+             o.name?.toLowerCase().includes('abrigo') ||
+             o.subcategory === 'Abrigos')
+          );
+          const pool = rainOuter.length > 0 ? rainOuter : outerwears;
+          candidateOuterwear = pool[Math.floor(Math.random() * pool.length)];
+        } else {
+          candidateOuterwear = outerwears[Math.floor(Math.random() * outerwears.length)];
+        }
       }
 
       const candidateItems = [candidateTop, candidateBottom, candidateFootwear];
@@ -2081,6 +2168,11 @@ export default function App() {
     showToast('Día liberado del calendario');
   };
 
+  const resetFullWeekPlan = () => {
+    updateUserPlanner({});
+    showToast('🔄 Semana reseteada. Puedes planificar o generar nuevos looks en cualquier momento.');
+  };
+
   // --- Mejora 1: Look Matutino Automático ("Morning Briefing") al abrir la app ---
   useEffect(() => {
     if (!currentUser?.username || garments.length === 0) return;
@@ -2158,7 +2250,7 @@ export default function App() {
     const selectedTops = bySlot('Top').slice(0, topsNeeded);
     const selectedBottoms = bySlot('Bottom').slice(0, bottomsNeeded);
     const selectedShoes = bySlot('Footwear').slice(0, shoesNeeded);
-    const selectedOuter = warmthTarget >= 3 || isRaining ? bySlot('Outerwear').slice(0, days >= 5 ? 2 : 1) : [];
+    const selectedOuter = warmthTarget >= 3 || tripIsRaining || isRaining ? bySlot('Outerwear').slice(0, days >= 5 ? 2 : 1) : [];
 
     const capsule = [...selectedTops, ...selectedBottoms, ...selectedShoes, ...selectedOuter];
     if (capsule.length < 3) {
@@ -2223,13 +2315,15 @@ export default function App() {
     showToast(`🧺 ¡Buen regreso! ${targetIds.size} prendas del viaje enviadas a colada y usos sumados.`);
   };
 
-  // Prendas filtradas en la vista de Armario (Categoría, Olvidadas, Modo Temporada + Buscador)
+  // Prendas filtradas en la vista de Armario (Categoría, Ocasión/Plan, Olvidadas, Modo Temporada + Buscador)
   const filteredGarments = garments.filter(g => {
     const matchesCategory =
       selectedFilter === 'ALL'
         ? true
         : selectedFilter === 'UNWORN'
         ? (Number(g.wearCount) || 0) === 0
+        : OCCASIONS.some(o => o.id === selectedFilter)
+        ? Array.isArray(g.occasion) && g.occasion.includes(selectedFilter)
         : (g.subcategory || getDefaultSubcategory(g.category)) === selectedFilter;
     const matchesSeason =
       !seasonFilterActive || Math.abs((Number(g.warmth) || 3) - desiredWarmth) <= 2;
@@ -2238,7 +2332,8 @@ export default function App() {
       !q ||
       g.name?.toLowerCase().includes(q) ||
       g.color?.toLowerCase().includes(q) ||
-      g.subcategory?.toLowerCase().includes(q);
+      g.subcategory?.toLowerCase().includes(q) ||
+      (Array.isArray(g.occasion) && g.occasion.some(occ => occ.toLowerCase().includes(q)));
     return matchesCategory && matchesSeason && matchesSearch;
   });
 
@@ -2800,12 +2895,17 @@ export default function App() {
               </div>
             )}
 
-            {/* 1. ¿Para qué ocasión? */}
+            {/* 1. ¿Para qué ocasión? (9 Opciones de Estilo y Plan) */}
             <div className="space-y-2">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                1. ¿Qué plan tienes hoy?
-              </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="flex justify-between items-center">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  1. ¿Qué plan u ocasión tienes hoy?
+                </label>
+                <span className="text-[10px] font-bold text-slate-500">
+                  {OCCASIONS.find(o => o.id === selectedOccasion)?.label}
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
                 {OCCASIONS.map((occ) => {
                   const Icon = occ.icon;
                   const active = selectedOccasion === occ.id;
@@ -2813,28 +2913,28 @@ export default function App() {
                     <button
                       key={occ.id}
                       onClick={() => setSelectedOccasion(occ.id)}
-                      className={`py-3 px-2 rounded-2xl font-bold text-xs flex flex-col items-center gap-1.5 border transition-all ${
+                      className={`py-2 px-1.5 rounded-2xl font-bold text-xs flex flex-col items-center justify-center gap-1 border transition-all ${
                         active
                           ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
                           : 'bg-[#FAF9F6] text-slate-600 border-slate-200/80 hover:bg-slate-100'
                       }`}
                     >
-                      <Icon className={`w-4 h-4 ${active ? 'text-white' : 'text-slate-500'}`} />
-                      <span>{occ.label}</span>
+                      <Icon className={`w-4 h-4 ${active ? 'text-amber-300' : 'text-slate-500'}`} />
+                      <span className="text-[11px] truncate tracking-tight">{occ.label}</span>
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* 2. Sensación térmica en 3 botones claros */}
+            {/* 2. Sensación térmica + Modificador de Lluvia combinable */}
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                  2. ¿Cuánto abrigo quieres?
+                  2. Clima y Abrigo deseado
                 </label>
                 <span className="text-[11px] font-semibold text-slate-600">
-                  Clima actual: {temp}°C
+                  {locationName}: {temp}°C
                 </span>
               </div>
               <div className="grid grid-cols-3 gap-2">
@@ -2866,6 +2966,39 @@ export default function App() {
                   );
                 })}
               </div>
+
+              {/* Botón Lluvioso combinable con cualquiera de los 3 niveles térmicos */}
+              <button
+                type="button"
+                onClick={() => {
+                  const nextRaining = !isRaining;
+                  setIsRaining(nextRaining);
+                  showToast(
+                    nextRaining
+                      ? '🌧️ Modo lluvia activado: prioriza abrigo impermeable / chubasquero'
+                      : '☀️ Modo seco activado'
+                  );
+                }}
+                className={`w-full py-2.5 px-3.5 rounded-2xl border text-xs font-bold flex items-center justify-between transition-all ${
+                  isRaining
+                    ? 'bg-sky-50 border-sky-300 text-sky-950 ring-1 ring-sky-400/30 shadow-xs'
+                    : 'bg-[#FAF9F6] border-slate-200/80 text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <CloudRain className={`w-4 h-4 ${isRaining ? 'text-sky-600' : 'text-slate-400'}`} />
+                  <span className="font-bold">🌧️ ¿Tiempo Lluvioso o amenaza lluvia?</span>
+                </div>
+                <span
+                  className={`text-[10px] px-2.5 py-0.5 rounded-full font-extrabold ${
+                    isRaining
+                      ? 'bg-sky-600 text-white'
+                      : 'bg-slate-200 text-slate-600'
+                  }`}
+                >
+                  {isRaining ? 'Lluvia Activada' : 'Sin Lluvia'}
+                </span>
+              </button>
             </div>
 
             {/* Botón Principal de Generar */}
@@ -3214,14 +3347,31 @@ export default function App() {
               </span>
             </div>
 
-            <button
-              type="button"
-              onClick={generateFullWeekPlan}
-              className="w-full py-3 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-md shadow-slate-900/10 flex items-center justify-center gap-2 transition-all active:scale-[0.99]"
-            >
-              <Sparkles className="w-4 h-4 text-amber-300" />
-              <span>Generar Semana Completa con IA</span>
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={generateFullWeekPlan}
+                className="flex-1 py-3 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-md shadow-slate-900/10 flex items-center justify-center gap-2 transition-all active:scale-[0.99]"
+              >
+                <Sparkles className="w-4 h-4 text-amber-300" />
+                <span>Generar Semana Completa con IA</span>
+              </button>
+              {plannedDaysCount > 0 && (
+                <button
+                  type="button"
+                  onClick={resetFullWeekPlan}
+                  title="Resetear o vaciar la semana para empezar de nuevo"
+                  className="py-3 px-3.5 rounded-2xl bg-[#FAF9F6] hover:bg-rose-50 text-slate-700 hover:text-rose-600 border border-slate-200/80 font-bold text-xs flex items-center gap-1.5 transition-colors shrink-0"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  <span>Resetear</span>
+                </button>
+              )}
+            </div>
+
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              💡 <strong>Flexibilidad total:</strong> No tienes que esperar a que pasen 7 días. Puedes regenerar cualquier día suelto, cambiar su ocasión o pulsar <strong>Resetear</strong> para empezar de nuevo cuando quieras.
+            </p>
 
             {/* Cinta de Días Lunes a Domingo (Clean Studio) */}
             <div className="grid grid-cols-7 gap-1.5 bg-[#FAF9F6] p-1.5 rounded-2xl border border-slate-200/80">
@@ -3286,8 +3436,8 @@ export default function App() {
                     </p>
                   </div>
 
-                  {/* Selector rápido de Ocasión del Día */}
-                  <div className="flex gap-1.5 bg-[#FAF9F6] p-1 rounded-xl border border-slate-200/70">
+                  {/* Selector rápido de Ocasión del Día (9 Opciones) */}
+                  <div className="flex gap-1.5 bg-[#FAF9F6] p-1 rounded-xl border border-slate-200/70 overflow-x-auto no-scrollbar max-w-full">
                     {OCCASIONS.map(occ => {
                       const isOcc = activeOccasion === occ.id;
                       return (
@@ -3295,13 +3445,13 @@ export default function App() {
                           key={occ.id}
                           type="button"
                           onClick={() => generateSingleDayPlan(selectedDay, occ.id)}
-                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all ${
                             isOcc
                               ? 'bg-slate-900 text-white shadow-xs'
                               : 'text-slate-500 hover:text-slate-900'
                           }`}
                         >
-                          {occ.id === 'Work' ? 'Trabajo' : occ.id === 'Going Out' ? 'Salir' : 'Deporte'}
+                          {occ.emoji} {occ.label}
                         </button>
                       );
                     })}
@@ -3500,7 +3650,24 @@ export default function App() {
             {/* Selector de Clima en Destino y Estilo Principal */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-600">2. Clima en tu destino</label>
+                <div className="flex justify-between items-center">
+                  <label className="text-[11px] font-bold text-slate-600">2. Clima en tu destino</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = !tripIsRaining;
+                      setTripIsRaining(next);
+                      showToast(next ? '🌧️ Previsión de lluvia añadida al viaje' : '☀️ Viaje en seco');
+                    }}
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all ${
+                      tripIsRaining
+                        ? 'bg-sky-50 text-sky-700 border-sky-300'
+                        : 'bg-[#FAF9F6] text-slate-500 border-slate-200 hover:text-slate-800'
+                    }`}
+                  >
+                    {tripIsRaining ? '🌧️ Con lluvia' : '☀️ Sin lluvia'}
+                  </button>
+                </div>
                 <div className="grid grid-cols-3 gap-1.5">
                   {WARMTH_LEVELS.map(lvl => {
                     const active = tripWarmth === lvl.value;
@@ -3523,20 +3690,25 @@ export default function App() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-600">3. Plan principal del viaje</label>
-                <div className="grid grid-cols-3 gap-1.5">
+                <div className="flex justify-between items-center">
+                  <label className="text-[11px] font-bold text-slate-600">3. Plan del viaje</label>
+                  <span className="text-[10px] font-bold text-slate-500">
+                    {OCCASIONS.find(o => o.id === tripOccasion)?.label}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-1.5 max-h-32 overflow-y-auto pr-0.5">
                   {OCCASIONS.map(occ => (
                     <button
                       key={occ.id}
                       type="button"
                       onClick={() => setTripOccasion(occ.id)}
-                      className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all ${
+                      className={`py-2 px-1 rounded-xl text-[10px] font-bold border truncate transition-all ${
                         tripOccasion === occ.id
                           ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
                           : 'bg-[#FAF9F6] text-slate-600 border-slate-200/80 hover:bg-slate-100'
                       }`}
                     >
-                      {occ.id === 'Work' ? 'Trabajo' : occ.id === 'Going Out' ? 'Ocio/Salir' : 'Deporte'}
+                      {occ.label}
                     </button>
                   ))}
                 </div>
@@ -3865,6 +4037,32 @@ export default function App() {
                 </button>
               );
             })}
+            {/* Filtros rápidos por Ocasión / Plan */}
+            {OCCASIONS.map(occ => {
+              const count = garments.filter(
+                g => Array.isArray(g.occasion) && g.occasion.includes(occ.id)
+              ).length;
+              if (count === 0) return null;
+              return (
+                <button
+                  key={occ.id}
+                  onClick={() => setSelectedFilter(selectedFilter === occ.id ? 'ALL' : occ.id)}
+                  className={`px-3.5 py-2 rounded-full text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-all ${
+                    selectedFilter === occ.id
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-100'
+                  }`}
+                >
+                  <span>{occ.emoji}</span>
+                  <span>{occ.label}</span>
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                    selectedFilter === occ.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
           {/* Listado Editorial Clean Studio de Prendas */}
@@ -4014,6 +4212,31 @@ export default function App() {
                             >
                               {hasPrice ? `${cpw}€/uso` : '+ €'}
                             </button>
+                          </div>
+                        )}
+
+                        {/* Etiquetas de Ocasión Multietiqueta */}
+                        {Array.isArray(g.occasion) && g.occasion.length > 0 && (
+                          <div className="flex flex-wrap gap-1 pt-1">
+                            {g.occasion.map(occ => {
+                              const occMeta = OCCASIONS.find(o => o.id === occ);
+                              const isSelected = selectedFilter === occ;
+                              return (
+                                <button
+                                  key={occ}
+                                  type="button"
+                                  onClick={() => setSelectedFilter(isSelected ? 'ALL' : occ)}
+                                  className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md border transition-all ${
+                                    isSelected
+                                      ? 'bg-slate-900 text-white border-slate-900'
+                                      : 'bg-[#FAF9F6] hover:bg-slate-100 text-slate-600 border-slate-200/70'
+                                  }`}
+                                  title={`Filtrar por ${occMeta?.label || occ}`}
+                                >
+                                  {occMeta?.emoji} {occMeta?.label || occ}
+                                </button>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
@@ -4418,25 +4641,36 @@ export default function App() {
                 </div>
               </div>
 
-              {/* 5. Ocasión y Abrigo */}
-              <div className="grid grid-cols-3 gap-2">
-                {OCCASIONS.map((occ) => {
-                  const active = newGarment.occasion.includes(occ.id);
-                  return (
-                    <button
-                      type="button"
-                      key={occ.id}
-                      onClick={() => toggleNewGarmentOccasion(occ.id)}
-                      className={`py-2 text-xs rounded-xl font-bold border transition-all ${
-                        active
-                          ? 'bg-slate-900 border-slate-900 text-white'
-                          : 'bg-[#FAF9F6] border-slate-200 text-slate-500'
-                      }`}
-                    >
-                      {occ.label}
-                    </button>
-                  );
-                })}
+              {/* 5. Ocasiones y Planes (Multietiqueta) */}
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs font-bold text-slate-700">
+                    5. ¿Para qué planes encaja? (Multietiqueta)
+                  </label>
+                  <span className="text-[10px] font-bold text-indigo-600">
+                    {newGarment.occasion.length} seleccionado(s)
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {OCCASIONS.map((occ) => {
+                    const active = newGarment.occasion.includes(occ.id);
+                    return (
+                      <button
+                        type="button"
+                        key={occ.id}
+                        onClick={() => toggleNewGarmentOccasion(occ.id)}
+                        className={`py-2 px-1 text-[11px] rounded-xl font-bold border transition-all flex items-center justify-center gap-1 ${
+                          active
+                            ? 'bg-slate-900 border-slate-900 text-white shadow-xs'
+                            : 'bg-[#FAF9F6] border-slate-200 text-slate-600 hover:bg-slate-100'
+                        }`}
+                      >
+                        <span>{active ? '✓' : occ.emoji}</span>
+                        <span className="truncate">{occ.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
