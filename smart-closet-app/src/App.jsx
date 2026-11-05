@@ -10,7 +10,6 @@ import {
   Droplets, 
   Thermometer,
   Trash2,
-  SlidersHorizontal,
   Camera,
   X,
   LogOut,
@@ -21,24 +20,45 @@ import {
   ThumbsUp,
   ThumbsDown,
   MessageSquarePlus,
-  Filter,
-  Tag,
   History,
-  Star
+  Star,
+  ChevronRight,
+  CheckCircle2,
+  Briefcase,
+  Coffee,
+  Dumbbell,
+  Sun,
+  Cloud,
+  Snowflake
 } from 'lucide-react';
 
-// Clasificaciones detalladas de prendas y su bloque funcional para armar outfits
+// Clasificaciones detalladas de prendas
 const GARMENT_TYPES = [
-  { id: 'Camisetas', label: 'Camisetas', slot: 'Top' },
-  { id: 'Camisas', label: 'Camisas / Blusas', slot: 'Top' },
-  { id: 'Sudaderas', label: 'Sudaderas', slot: 'Top' },
-  { id: 'Jerseys', label: 'Jerseys / Punto', slot: 'Top' },
-  { id: 'Pantalones', label: 'Pantalones', slot: 'Bottom' },
-  { id: 'Vaqueros', label: 'Vaqueros / Jeans', slot: 'Bottom' },
-  { id: 'FaldasShorts', label: 'Faldas / Bermudas', slot: 'Bottom' },
-  { id: 'Abrigos', label: 'Abrigos / Cazadoras', slot: 'Outerwear' },
-  { id: 'Blazers', label: 'Blazers / Americanas', slot: 'Outerwear' },
-  { id: 'Calzado', label: 'Calzado / Zapatillas', slot: 'Footwear' }
+  { id: 'Camisetas', label: 'Camisetas', singular: 'Camiseta', slot: 'Top', emoji: '👕' },
+  { id: 'Camisas', label: 'Camisas', singular: 'Camisa', slot: 'Top', emoji: '👔' },
+  { id: 'Sudaderas', label: 'Sudaderas', singular: 'Sudadera', slot: 'Top', emoji: '🧥' },
+  { id: 'Jerseys', label: 'Jerseys', singular: 'Jersey', slot: 'Top', emoji: '🧶' },
+  { id: 'Pantalones', label: 'Pantalones', singular: 'Pantalón', slot: 'Bottom', emoji: '👖' },
+  { id: 'Vaqueros', label: 'Vaqueros', singular: 'Vaquero', slot: 'Bottom', emoji: '👖' },
+  { id: 'FaldasShorts', label: 'Bermudas / Faldas', singular: 'Bermuda/Falda', slot: 'Bottom', emoji: '🩳' },
+  { id: 'Abrigos', label: 'Abrigos', singular: 'Abrigo', slot: 'Outerwear', emoji: '🧥' },
+  { id: 'Blazers', label: 'Blazers', singular: 'Blazer', slot: 'Outerwear', emoji: '🤵' },
+  { id: 'Calzado', label: 'Calzado', singular: 'Calzado', slot: 'Footwear', emoji: '👟' }
+];
+
+// Paleta rápida de colores para añadir prendas sin teclear
+const QUICK_COLORS = [
+  { name: 'Negro', hex: '#1e293b' },
+  { name: 'Blanco', hex: '#f8fafc', border: true },
+  { name: 'Gris', hex: '#94a3b8' },
+  { name: 'Beige', hex: '#d6c7b2' },
+  { name: 'Azul Marino', hex: '#1e3a8a' },
+  { name: 'Azul', hex: '#3b82f6' },
+  { name: 'Verde', hex: '#16a34a' },
+  { name: 'Burdeos', hex: '#881337' },
+  { name: 'Rojo', hex: '#ef4444' },
+  { name: 'Marrón', hex: '#78350f' },
+  { name: 'Rosa', hex: '#ec4899' }
 ];
 
 const getSlotFromType = (subcategory, fallbackCategory = 'Top') => {
@@ -143,18 +163,24 @@ const INITIAL_GARMENTS = [
   }
 ];
 
-const OCCASION_LABELS = {
-  Work: 'Trabajo',
-  'Going Out': 'Salir',
-  Sport: 'Deporte'
-};
+const OCCASIONS = [
+  { id: 'Work', label: 'Trabajo', icon: Briefcase },
+  { id: 'Going Out', label: 'Casual / Salir', icon: Coffee },
+  { id: 'Sport', label: 'Deporte', icon: Dumbbell }
+];
+
+const WARMTH_LEVELS = [
+  { value: 1, label: 'Calor', desc: 'Ropa fresca', icon: Sun },
+  { value: 3, label: 'Templado', desc: 'Entretiempo', icon: Cloud },
+  { value: 5, label: 'Frío', desc: 'Bien abrigado', icon: Snowflake }
+];
 
 const FEEDBACK_REASONS = [
-  { id: 'colors', label: 'No combinan bien los colores' },
-  { id: 'too_cold', label: 'Pasaría frío (poco abrigo)' },
-  { id: 'too_warm', label: 'Pasaría calor (demasiado abrigo)' },
-  { id: 'wrong_style', label: 'No encaja con la ocasión' },
-  { id: 'dislike_combo', label: 'No me gusta esta combinación de prendas' }
+  { id: 'colors', label: '🎨 No pegan los colores' },
+  { id: 'too_cold', label: '🥶 Pasaría frío' },
+  { id: 'too_warm', label: '🥵 Pasaría calor' },
+  { id: 'wrong_style', label: '👔 No encaja hoy' },
+  { id: 'dislike_combo', label: '👎 No me gusta junto' }
 ];
 
 export default function App() {
@@ -167,6 +193,7 @@ export default function App() {
       return null;
     }
   });
+  const [savedUsers, setSavedUsers] = useState([]);
   const [authMode, setAuthMode] = useState('login');
   const [authUsername, setAuthUsername] = useState('');
   const [authPassword, setAuthPassword] = useState('');
@@ -178,7 +205,6 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('generator');
   const [garments, setGarments] = useState([]);
   const [selectedFilter, setSelectedFilter] = useState('ALL');
-  const [editingGarmentId, setEditingGarmentId] = useState(null);
 
   // --- Historial de Feedback del Usuario ---
   const [feedbackHistory, setFeedbackHistory] = useState([]);
@@ -186,7 +212,22 @@ export default function App() {
   const [selectedReasons, setSelectedReasons] = useState(['dislike_combo']);
   const [customFeedbackText, setCustomFeedbackText] = useState('');
   const [outfitRating, setOutfitRating] = useState(8);
-  const [outfitAcceptedMsg, setOutfitAcceptedMsg] = useState('');
+  const [toastMsg, setToastMsg] = useState('');
+
+  const showToast = (msg) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(''), 3200);
+  };
+
+  // Cargar lista de usuarios registrados
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('smart_closet_users');
+      setSavedUsers(raw ? JSON.parse(raw) : []);
+    } catch {
+      setSavedUsers([]);
+    }
+  }, [currentUser]);
 
   // Cargar el armario y el feedback específico del usuario cuando inicia sesión
   useEffect(() => {
@@ -201,7 +242,6 @@ export default function App() {
     try {
       const savedGarments = localStorage.getItem(closetKey);
       if (savedGarments) {
-        // Asegurar que prendas antiguas tengan subcategory
         const parsed = JSON.parse(savedGarments).map(g => ({
           ...g,
           subcategory: g.subcategory || getDefaultSubcategory(g.category),
@@ -232,7 +272,7 @@ export default function App() {
         );
       } catch (e) {
         console.error('Error al guardar en localStorage:', e);
-        alert('Espacio de almacenamiento local lleno. Intenta eliminar alguna prenda antigua.');
+        alert('Espacio de almacenamiento lleno. Intenta borrar alguna prenda antigua.');
       }
     }
   };
@@ -276,10 +316,10 @@ export default function App() {
   const [newGarment, setNewGarment] = useState({
     name: '',
     subcategory: 'Camisetas',
-    occasion: ['Work'],
+    occasion: ['Work', 'Going Out'],
     warmth: 3,
     comfort: 4,
-    color: '',
+    color: 'Negro',
     image: ''
   });
 
@@ -294,10 +334,8 @@ export default function App() {
         setLocationName(name);
         
         const t = data.current_weather.temperature;
-        if (t < 10) setDesiredWarmth(5);
-        else if (t < 15) setDesiredWarmth(4);
-        else if (t < 20) setDesiredWarmth(3);
-        else if (t < 25) setDesiredWarmth(2);
+        if (t < 13) setDesiredWarmth(5);
+        else if (t < 21) setDesiredWarmth(3);
         else setDesiredWarmth(1);
       }
     } catch (e) {
@@ -320,13 +358,20 @@ export default function App() {
     }
   };
 
+  const quickLoginUser = (userObj) => {
+    const sessionUser = { username: userObj.username, name: userObj.name };
+    localStorage.setItem('smart_closet_current_user', JSON.stringify(sessionUser));
+    setCurrentUser(sessionUser);
+    setCurrentOutfit(null);
+  };
+
   const handleAuthSubmit = (e) => {
     e.preventDefault();
     setAuthError('');
     const usernameClean = authUsername.trim().toLowerCase();
 
-    if (!usernameClean || !authPassword.trim()) {
-      setAuthError('Por favor, introduce tu usuario y contraseña.');
+    if (!usernameClean) {
+      setAuthError('Introduce tu nombre de usuario.');
       return;
     }
 
@@ -334,15 +379,17 @@ export default function App() {
 
     if (authMode === 'register') {
       if (users.some(u => u.username === usernameClean)) {
-        setAuthError('Ese nombre de usuario ya está registrado.');
+        setAuthError('Ese usuario ya existe. Selecciónalo arriba o inicia sesión.');
         return;
       }
       const newUser = {
         username: usernameClean,
-        name: authName.trim() || usernameClean,
+        name: authName.trim() || authUsername.trim(),
         password: authPassword
       };
-      localStorage.setItem('smart_closet_users', JSON.stringify([...users, newUser]));
+      const updated = [...users, newUser];
+      localStorage.setItem('smart_closet_users', JSON.stringify(updated));
+      setSavedUsers(updated);
       
       const initialCloset = includeSampleCloset ? INITIAL_GARMENTS : [];
       localStorage.setItem(`smart_closet_garments_${usernameClean}`, JSON.stringify(initialCloset));
@@ -353,15 +400,14 @@ export default function App() {
       setCurrentOutfit(null);
       setAuthPassword('');
     } else {
-      const found = users.find(u => u.username === usernameClean && u.password === authPassword);
+      const found = users.find(
+        u => u.username === usernameClean && (!u.password || u.password === authPassword)
+      );
       if (!found) {
-        setAuthError('Usuario o contraseña incorrectos. Si no tienes cuenta, regístrate.');
+        setAuthError('Usuario o contraseña no coinciden. ¿Quieres crear una cuenta nueva?');
         return;
       }
-      const sessionUser = { username: found.username, name: found.name };
-      localStorage.setItem('smart_closet_current_user', JSON.stringify(sessionUser));
-      setCurrentUser(sessionUser);
-      setCurrentOutfit(null);
+      quickLoginUser(found);
       setAuthPassword('');
     }
   };
@@ -382,7 +428,7 @@ export default function App() {
     stopCamera();
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      setCameraError('Tu navegador no permite cámara en vivo. Usa el botón "Cámara / Galería".');
+      setCameraError('Usa el botón "Móvil / Galería" para hacer la foto directamente.');
       return;
     }
 
@@ -401,7 +447,7 @@ export default function App() {
       }, 50);
     } catch (err) {
       console.error('Error al acceder a la cámara:', err);
-      setCameraError('No se pudo abrir la cámara en vivo. Verifica permisos o usa "Cámara / Galería".');
+      setCameraError('No se pudo abrir la cámara en vivo. Pulsa en "Móvil / Galería".');
     }
   };
 
@@ -439,7 +485,7 @@ export default function App() {
     canvas.height = height;
     const ctx = canvas.getContext('2d');
     ctx.drawImage(video, 0, 0, width, height);
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
     setNewGarment(prev => ({ ...prev, image: dataUrl }));
     stopCamera();
   };
@@ -469,7 +515,7 @@ export default function App() {
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
         setNewGarment(prev => ({ ...prev, image: compressedDataUrl }));
         stopCamera();
       };
@@ -491,26 +537,23 @@ export default function App() {
 
   const handleSaveGarment = (e) => {
     e.preventDefault();
-    if (!newGarment.name.trim()) {
-      alert('Por favor, ponle un nombre a la prenda.');
-      return;
-    }
     if (!newGarment.image) {
-      alert('Por favor, haz una foto con la cámara o selecciona una imagen de tu prenda.');
+      alert('Primero haz una foto o sube una imagen de la prenda.');
       return;
     }
 
-    const slot = getSlotFromType(newGarment.subcategory, 'Top');
+    const typeObj = GARMENT_TYPES.find(t => t.id === newGarment.subcategory) || GARMENT_TYPES[0];
+    const autoName = `${typeObj.singular} ${newGarment.color || ''}`.trim();
 
     const created = {
       id: Date.now().toString(),
-      name: newGarment.name.trim(),
-      category: slot,
+      name: newGarment.name.trim() || autoName,
+      category: typeObj.slot,
       subcategory: newGarment.subcategory,
       occasion: newGarment.occasion,
       warmth: Number(newGarment.warmth),
-      comfort: Number(newGarment.comfort),
-      color: newGarment.color.trim() || 'Multicolor',
+      comfort: 4,
+      color: newGarment.color.trim() || 'Negro',
       inLaundry: false,
       image: newGarment.image
     };
@@ -521,24 +564,27 @@ export default function App() {
     setNewGarment({
       name: '',
       subcategory: 'Camisetas',
-      occasion: ['Work'],
+      occasion: ['Work', 'Going Out'],
       warmth: 3,
       comfort: 4,
-      color: '',
+      color: 'Negro',
       image: ''
     });
+    showToast(`"${created.name}" añadida a tu armario`);
   };
 
   // Eliminar prenda del armario
-  const deleteGarment = (id, name) => {
+  const deleteGarment = (id) => {
+    const target = garments.find(g => String(g.id) === String(id));
     const updated = garments.filter(g => String(g.id) !== String(id));
     updateUserGarments(updated);
     if (currentOutfit && currentOutfit.some(g => String(g.id) === String(id))) {
       setCurrentOutfit(null);
     }
+    if (target) showToast(`"${target.name}" eliminada`);
   };
 
-  // Cambiar clasificación de una prenda existente
+  // Cambiar clasificación de una prenda existente con 1 toque
   const changeGarmentSubcategory = (id, newSubcat) => {
     const newSlot = getSlotFromType(newSubcat, 'Top');
     const updated = garments.map(g =>
@@ -547,34 +593,58 @@ export default function App() {
         : g
     );
     updateUserGarments(updated);
-    setEditingGarmentId(null);
+    showToast(`Clasificación actualizada a ${newSubcat}`);
+  };
+
+  // Cambiar solo una prenda individual dentro del outfit sugerido
+  const swapSingleOutfitItem = (slotToSwap, currentItemId) => {
+    if (!currentOutfit) return;
+    const pool = garments.filter(
+      g =>
+        !g.inLaundry &&
+        getSlotFromType(g.subcategory, g.category) === slotToSwap &&
+        String(g.id) !== String(currentItemId)
+    );
+    if (pool.length === 0) {
+      showToast('No tienes otra prenda limpia de este tipo para cambiar.');
+      return;
+    }
+    const replacement = pool[Math.floor(Math.random() * pool.length)];
+    const updatedOutfit = currentOutfit.map(item =>
+      String(item.id) === String(currentItemId) ? replacement : item
+    );
+    setCurrentOutfit(updatedOutfit);
   };
 
   // --- Generador Inteligente de Outfits con Aprendizaje de Feedback ---
   const generateOutfit = () => {
     setGenerating(true);
     setShowRejectPanel(false);
-    setOutfitAcceptedMsg('');
 
     setTimeout(() => {
-      const available = garments.filter(g => !g.inLaundry && g.occasion.includes(selectedOccasion));
+      // Buscar primero prendas de la ocasión; si falta algún bloque básico, usar cualquier prenda limpia de ese bloque
+      const cleanGarments = garments.filter(g => !g.inLaundry);
+      const occasionGarments = cleanGarments.filter(g => g.occasion?.includes(selectedOccasion));
 
-      const tops = available.filter(g => getSlotFromType(g.subcategory, g.category) === 'Top');
-      const bottoms = available.filter(g => getSlotFromType(g.subcategory, g.category) === 'Bottom');
-      const footwears = available.filter(g => getSlotFromType(g.subcategory, g.category) === 'Footwear');
-      const outerwears = available.filter(g => getSlotFromType(g.subcategory, g.category) === 'Outerwear');
+      const getPool = (slot) => {
+        const byOccasion = occasionGarments.filter(g => getSlotFromType(g.subcategory, g.category) === slot);
+        if (byOccasion.length > 0) return byOccasion;
+        return cleanGarments.filter(g => getSlotFromType(g.subcategory, g.category) === slot);
+      };
+
+      const tops = getPool('Top');
+      const bottoms = getPool('Bottom');
+      const footwears = getPool('Footwear');
+      const outerwears = getPool('Outerwear');
 
       if (tops.length === 0 || bottoms.length === 0 || footwears.length === 0) {
-        alert("Necesitas al menos 1 Parte Superior (camiseta/camisa/sudadera/jersey), 1 Parte Inferior (pantalón/vaquero) y 1 Calzado limpios para esta ocasión.");
+        alert("Necesitas al menos 1 Parte Superior, 1 Parte Inferior y 1 Calzado limpios en tu armario.");
         setGenerating(false);
         return;
       }
 
-      // Analizar feedback pasado del usuario
       const rejectedFeedbacks = feedbackHistory.filter(f => f.status === 'rejected');
-      const acceptedFeedbacks = feedbackHistory.filter(f => f.status === 'accepted');
 
-      // Calcular ajuste de abrigo aprendido según rechazos previos por frío/calor
       let warmthBias = 0;
       rejectedFeedbacks.forEach(fb => {
         if (fb.reasons?.includes('too_cold')) warmthBias += 0.5;
@@ -582,12 +652,10 @@ export default function App() {
       });
       const targetWarmth = Math.min(5, Math.max(1, Math.round(desiredWarmth + warmthBias)));
 
-      // Evaluar varios candidatos de outfit y puntuar según preferencias/feedback
       let bestCandidate = null;
       let bestScore = -9999;
 
-      const maxAttempts = 25;
-      for (let i = 0; i < maxAttempts; i++) {
+      for (let i = 0; i < 25; i++) {
         const candidateTop = tops[Math.floor(Math.random() * tops.length)];
         const candidateBottom = bottoms[Math.floor(Math.random() * bottoms.length)];
         const candidateFootwear = footwears[Math.floor(Math.random() * footwears.length)];
@@ -607,11 +675,9 @@ export default function App() {
 
         let score = 0;
 
-        // 1. Penalizar fuertemente si esta combinación exacta ya fue rechazada
         const exactRejected = rejectedFeedbacks.some(fb => fb.comboKey === candidateIds);
         if (exactRejected) score -= 50;
 
-        // 2. Penalizar si el par (Top + Bottom) fue rechazado por combinación o colores
         const pairRejected = rejectedFeedbacks.some(
           fb =>
             fb.topBottomKey === `${candidateTop.id}_${candidateBottom.id}` ||
@@ -619,26 +685,22 @@ export default function App() {
         );
         if (pairRejected) score -= 25;
 
-        // 3. Premiar o penalizar según la valoración de 0 a 10 estrellas en usos previos
         const previousRatings = feedbackHistory.filter(
           fb => fb.comboKey === candidateIds || fb.topBottomKey === `${candidateTop.id}_${candidateBottom.id}`
         );
         previousRatings.forEach(fb => {
           if (typeof fb.rating === 'number') {
-            // Si tiene >= 6 estrellas suma puntos; si tiene < 5 resta puntos proporcionalmente
             score += (fb.rating - 5) * 4;
           } else if (fb.status === 'accepted') {
             score += 10;
           }
         });
 
-        // 4. Ajustar cercanía al abrigo objetivo (incluyendo aprendizaje)
         const avgWarmth =
           candidateItems.reduce((acc, it) => acc + (Number(it.warmth) || 3), 0) /
           candidateItems.length;
         score -= Math.abs(avgWarmth - targetWarmth) * 4;
 
-        // 5. Evitar repetir exactamente el outfit que está en pantalla ahora mismo si hay más opciones
         if (currentOutfit) {
           const currentKey = currentOutfit.map(item => String(item.id)).sort().join('-');
           if (currentKey === candidateIds) score -= 15;
@@ -656,15 +718,15 @@ export default function App() {
       const topItem = bestCandidate[0];
       const bottomItem = bestCandidate[1];
       const learnedNote =
-        rejectedFeedbacks.length > 0
-          ? ` Se han tenido en cuenta tus ${rejectedFeedbacks.length} valoraciones previas para evitar combinaciones rechazadas.`
+        feedbackHistory.length > 0
+          ? ` Adaptado a tus ${feedbackHistory.length} valoraciones previas.`
           : '';
 
       setAiNote(
-        `Combinación de ${topItem.subcategory || 'prenda'} (${topItem.color}) con ${bottomItem.subcategory || 'pantalón'} (${bottomItem.color}). Nivel de abrigo ${targetWarmth}/5 adaptado al clima.${learnedNote}`
+        `${topItem.name} con ${bottomItem.name}.${isRaining ? ' Incluye protección para lluvia.' : ''}${learnedNote}`
       );
       setGenerating(false);
-    }, 350);
+    }, 280);
   };
 
   // Aceptar el Outfit sugerido
@@ -685,7 +747,7 @@ export default function App() {
       colorPairKey: `${topItem.color?.toLowerCase()}_${bottomItem.color?.toLowerCase()}`,
       summary: currentOutfit.map(i => i.name).join(' + '),
       reasons: [],
-      comment: `Outfit aceptado (${outfitRating}/10 ⭐)`
+      comment: `Valorado con ${outfitRating}/10 ⭐`
     };
 
     updateUserFeedback([entry, ...feedbackHistory]);
@@ -694,9 +756,9 @@ export default function App() {
       const outfitIds = currentOutfit.map(g => g.id);
       updateUserGarments(garments.map(g => outfitIds.includes(g.id) ? { ...g, inLaundry: true } : g));
       setCurrentOutfit(null);
-      setOutfitAcceptedMsg(`¡Outfit valorado con ${outfitRating}/10 ⭐! Prendas enviadas a la colada.`);
+      showToast(`¡Look valorado (${outfitRating}/10 ⭐) y prendas enviadas a colada!`);
     } else {
-      setOutfitAcceptedMsg(`¡Guardado con ${outfitRating}/10 ⭐! Tendremos en cuenta tu valoración en futuros looks.`);
+      showToast(`¡Guardado en tus favoritos con ${outfitRating}/10 ⭐!`);
     }
     setShowRejectPanel(false);
   };
@@ -724,19 +786,17 @@ export default function App() {
       comment: customFeedbackText.trim()
     };
 
-    const updatedFeedback = [entry, ...feedbackHistory];
-    updateUserFeedback(updatedFeedback);
+    updateUserFeedback([entry, ...feedbackHistory]);
 
-    // Ajustar el slider de abrigo inmediatamente si el usuario indicó frío o calor
     if (selectedReasons.includes('too_cold') && desiredWarmth < 5) {
-      setDesiredWarmth(prev => Math.min(5, prev + 1));
+      setDesiredWarmth(prev => Math.min(5, prev + 2));
     } else if (selectedReasons.includes('too_warm') && desiredWarmth > 1) {
-      setDesiredWarmth(prev => Math.max(1, prev - 1));
+      setDesiredWarmth(prev => Math.max(1, prev - 2));
     }
 
     setCustomFeedbackText('');
     setShowRejectPanel(false);
-    // Generar una nueva propuesta automáticamente teniendo en cuenta el rechazo
+    showToast('Feedback aprendido. Buscando otra combinación...');
     generateOutfit();
   };
 
@@ -750,37 +810,87 @@ export default function App() {
     updateUserGarments(garments.map(g => g.id === id ? { ...g, inLaundry: !g.inLaundry } : g));
   };
 
+  const washAllLaundry = () => {
+    updateUserGarments(garments.map(g => ({ ...g, inLaundry: false })));
+    showToast('¡Toda la colada está limpia y de vuelta en tu armario!');
+  };
+
   // Prendas filtradas en la vista de Armario
   const filteredGarments =
     selectedFilter === 'ALL'
       ? garments
       : garments.filter(g => (g.subcategory || getDefaultSubcategory(g.category)) === selectedFilter);
 
-  // --- Pantalla de Login / Registro si no hay usuario activo ---
+  const laundryCount = garments.filter(g => g.inLaundry).length;
+
+  // ============================================================================
+  // PANTALLA DE ACCESO MODERNA Y RÁPIDA (CON PERFILES DE 1 CLIC)
+  // ============================================================================
   if (!currentUser) {
     return (
-      <div className="max-w-md mx-auto min-h-screen bg-slate-900 text-slate-100 flex flex-col justify-center p-6 font-sans border-x border-slate-800 shadow-2xl">
-        <div className="bg-slate-800/70 border border-slate-700/70 rounded-2xl p-6 space-y-6 shadow-xl">
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex flex-col justify-center items-center p-5">
+        <div className="max-w-md w-full bg-white rounded-3xl p-7 shadow-xl shadow-indigo-100/70 border border-slate-100 space-y-6">
           <div className="text-center space-y-2">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center mx-auto">
-              <Sparkles className="w-6 h-6 text-indigo-400" />
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center mx-auto shadow-lg shadow-indigo-500/30">
+              <Sparkles className="w-7 h-7 text-white" />
             </div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-pink-400 bg-clip-text text-transparent">
+            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
               Smart Closet
             </h1>
-            <p className="text-xs text-slate-400">
-              Inicia sesión para gestionar tu armario personal, clasificar prendas y entrenar tu estilista IA
+            <p className="text-sm text-slate-500">
+              Tu armario digital y estilista personal inteligente
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 bg-slate-900/70 p-1 rounded-xl border border-slate-700/60">
+          {/* Acceso en 1 Toque si ya hay usuarios en el dispositivo */}
+          {savedUsers.length > 0 && (
+            <div className="space-y-2.5">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                Entrar en 1 toque a tu armario
+              </p>
+              <div className="grid grid-cols-1 gap-2">
+                {savedUsers.map(u => (
+                  <button
+                    key={u.username}
+                    type="button"
+                    onClick={() => quickLoginUser(u)}
+                    className="w-full p-3 rounded-2xl bg-slate-50 hover:bg-indigo-50/70 border border-slate-200/80 hover:border-indigo-300 flex items-center justify-between transition-all group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-sm shadow-sm">
+                        {(u.name || u.username).charAt(0).toUpperCase()}
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-bold text-slate-800 group-hover:text-indigo-700">
+                          {u.name}
+                        </p>
+                        <p className="text-xs text-slate-400">@{u.username}</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition-all" />
+                  </button>
+                ))}
+              </div>
+              <div className="relative py-1">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-200"></div>
+                </div>
+                <div className="relative flex justify-center">
+                  <span className="bg-white px-3 text-xs text-slate-400">o accede con otra cuenta</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Pestañas Iniciar Sesión / Nuevo Armario */}
+          <div className="grid grid-cols-2 gap-1.5 bg-slate-100 p-1.5 rounded-2xl">
             <button
               type="button"
               onClick={() => { setAuthMode('login'); setAuthError(''); }}
-              className={`py-2 text-xs font-semibold rounded-lg transition-all ${
+              className={`py-2.5 text-xs font-bold rounded-xl transition-all ${
                 authMode === 'login'
-                  ? 'bg-indigo-600 text-white shadow'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800'
               }`}
             >
               Iniciar Sesión
@@ -788,86 +898,87 @@ export default function App() {
             <button
               type="button"
               onClick={() => { setAuthMode('register'); setAuthError(''); }}
-              className={`py-2 text-xs font-semibold rounded-lg transition-all ${
+              className={`py-2.5 text-xs font-bold rounded-xl transition-all ${
                 authMode === 'register'
-                  ? 'bg-indigo-600 text-white shadow'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              Crear Cuenta
+              Nuevo Usuario
             </button>
           </div>
 
           <form onSubmit={handleAuthSubmit} className="space-y-4">
             {authMode === 'register' && (
-              <div className="space-y-1">
-                <label className="text-xs text-slate-300 font-medium">Tu Nombre</label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-700">Tu Nombre</label>
                 <div className="relative">
-                  <User className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+                  <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                   <input
                     type="text"
                     placeholder="Ej. Javi"
                     value={authName}
                     onChange={(e) => setAuthName(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
                   />
                 </div>
               </div>
             )}
 
-            <div className="space-y-1">
-              <label className="text-xs text-slate-300 font-medium">Usuario</label>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700">Usuario</label>
               <div className="relative">
-                <User className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+                <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                 <input
                   type="text"
-                  placeholder="nombre_usuario"
+                  placeholder="Tu usuario (ej. javi)"
                   value={authUsername}
                   onChange={(e) => setAuthUsername(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
                   required
                 />
               </div>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-xs text-slate-300 font-medium">Contraseña</label>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700">
+                Contraseña <span className="text-slate-400 font-normal">(opcional)</span>
+              </label>
               <div className="relative">
-                <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                 <input
                   type="password"
                   placeholder="••••••••"
                   value={authPassword}
                   onChange={(e) => setAuthPassword(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
-                  required
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
                 />
               </div>
             </div>
 
             {authMode === 'register' && (
-              <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer pt-1">
+              <label className="flex items-center gap-2.5 text-xs text-slate-600 cursor-pointer p-2.5 rounded-xl bg-slate-50 border border-slate-200/70">
                 <input
                   type="checkbox"
                   checked={includeSampleCloset}
                   onChange={(e) => setIncludeSampleCloset(e.target.checked)}
-                  className="rounded accent-indigo-500"
+                  className="w-4 h-4 rounded accent-indigo-600"
                 />
-                Incluir prendas de ejemplo iniciales en mi armario
+                <span>Añadir prendas de muestra para probar rápido</span>
               </label>
             )}
 
             {authError && (
-              <p className="text-xs text-rose-400 bg-rose-950/40 border border-rose-800/50 p-2.5 rounded-xl">
+              <p className="text-xs font-medium text-rose-600 bg-rose-50 border border-rose-200 p-3 rounded-xl">
                 {authError}
               </p>
             )}
 
             <button
               type="submit"
-              className="w-full py-3 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 font-semibold rounded-xl text-sm text-white shadow-lg shadow-indigo-500/25 transition-all"
+              className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] font-bold rounded-2xl text-sm text-white shadow-lg shadow-indigo-600/25 transition-all"
             >
-              {authMode === 'login' ? 'Entrar a mi Armario' : 'Registrarme y Crear Armario'}
+              {authMode === 'login' ? 'Entrar a mi Armario' : 'Crear mi Armario'}
             </button>
           </form>
         </div>
@@ -875,165 +986,240 @@ export default function App() {
     );
   }
 
+  // ============================================================================
+  // APLICACIÓN PRINCIPAL (MODERNA, LIMPIA Y PRÁCTICA)
+  // ============================================================================
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-slate-900 text-slate-100 flex flex-col pb-20 font-sans border-x border-slate-800 shadow-2xl">
-      {/* Header */}
-      <header className="p-4 border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-10 space-y-2">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-6 h-6 text-indigo-400" />
-            <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-400 to-pink-400 bg-clip-text text-transparent">
-              Smart Closet
-            </h1>
+    <div className="max-w-lg mx-auto min-h-screen bg-slate-50 text-slate-900 flex flex-col pb-28 shadow-xl shadow-slate-200/60 border-x border-slate-200/60 relative">
+      {/* Notificación flotante (Toast) */}
+      {toastMsg && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-full text-xs font-semibold shadow-xl flex items-center gap-2 animate-bounce">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{toastMsg}</span>
+        </div>
+      )}
+
+      {/* Cabecera Minimalista */}
+      <header className="px-5 pt-4 pb-3 bg-white/90 backdrop-blur-md sticky top-0 z-20 border-b border-slate-200/70 flex justify-between items-center">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white font-bold text-sm shadow-sm">
+            {(currentUser.name || currentUser.username).charAt(0).toUpperCase()}
           </div>
-          <div className="flex items-center gap-2 text-xs bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700">
-            <MapPin className="w-3.5 h-3.5 text-indigo-400" />
-            <span>{locationName}</span>
-            <span className="text-slate-500">|</span>
-            <Thermometer className="w-3.5 h-3.5 text-amber-400" />
-            <span>{temp}°C</span>
-            {isRaining && <Droplets className="w-3.5 h-3.5 text-blue-400" />}
+          <div>
+            <h1 className="text-sm font-extrabold text-slate-900 leading-tight">
+              Hola, {currentUser.name}
+            </h1>
+            <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-medium">
+              <MapPin className="w-3 h-3 text-indigo-500" />
+              <span>{locationName}</span>
+              <span>•</span>
+              <span className="text-slate-700 font-semibold">{temp}°C</span>
+              {isRaining && <Droplets className="w-3 h-3 text-blue-500" />}
+            </div>
           </div>
         </div>
 
-        {/* Barra de Usuario Activo */}
-        <div className="flex justify-between items-center pt-1 text-xs text-slate-400">
-          <div className="flex items-center gap-1.5">
-            <User className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Armario de <strong className="text-slate-200">{currentUser.name}</strong></span>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-rose-400 bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700 transition-colors"
-          >
-            <LogOut className="w-3 h-3" /> Cerrar sesión
-          </button>
-        </div>
+        <button
+          onClick={handleLogout}
+          title="Cambiar de usuario"
+          className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-rose-600 bg-slate-100 hover:bg-rose-50 px-3 py-2 rounded-xl transition-colors"
+        >
+          <LogOut className="w-3.5 h-3.5" />
+          <span>Salir</span>
+        </button>
       </header>
 
-      {/* Vista: Generador */}
+      {/* =====================================================================
+          VISTA 1: GENERADOR DE OUTFITS ("HOY")
+      ====================================================================== */}
       {activeTab === 'generator' && (
-        <main className="p-4 flex-1 space-y-5">
-          {/* Controles de filtro */}
-          <section className="bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50 space-y-4">
-            <h2 className="text-sm font-semibold text-slate-400 flex items-center gap-2">
-              <SlidersHorizontal className="w-4 h-4" /> ¿Qué necesitas hoy?
-            </h2>
-            
-            {/* Ocasión */}
-            <div className="grid grid-cols-3 gap-2">
-              {['Work', 'Going Out', 'Sport'].map((occ) => (
-                <button
-                  key={occ}
-                  onClick={() => setSelectedOccasion(occ)}
-                  className={`py-2 text-xs rounded-xl font-medium transition-all ${
-                    selectedOccasion === occ 
-                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' 
-                      : 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700'
-                  }`}
-                >
-                  {OCCASION_LABELS[occ]}
-                </button>
-              ))}
-            </div>
-
-            {/* Abrigo slider */}
-            <div className="space-y-1">
-              <div className="flex justify-between text-xs text-slate-300">
-                <span>Nivel de Abrigo</span>
-                <span className="font-bold text-indigo-400">{desiredWarmth} / 5</span>
+        <main className="p-5 flex-1 space-y-5">
+          {/* Panel de Selección Rápida */}
+          <section className="bg-white p-5 rounded-3xl shadow-sm border border-slate-200/70 space-y-5">
+            {/* 1. ¿Para qué ocasión? */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                1. ¿Qué plan tienes hoy?
+              </label>
+              <div className="grid grid-cols-3 gap-2.5">
+                {OCCASIONS.map((occ) => {
+                  const Icon = occ.icon;
+                  const active = selectedOccasion === occ.id;
+                  return (
+                    <button
+                      key={occ.id}
+                      onClick={() => setSelectedOccasion(occ.id)}
+                      className={`py-3 px-2 rounded-2xl font-bold text-xs flex flex-col items-center gap-1.5 border transition-all ${
+                        active
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-500/20 scale-[1.02]'
+                          : 'bg-slate-50 text-slate-600 border-slate-200/80 hover:bg-slate-100'
+                      }`}
+                    >
+                      <Icon className={`w-5 h-5 ${active ? 'text-white' : 'text-indigo-500'}`} />
+                      <span>{occ.label}</span>
+                    </button>
+                  );
+                })}
               </div>
-              <input 
-                type="range" min="1" max="5" value={desiredWarmth} 
-                onChange={(e) => setDesiredWarmth(Number(e.target.value))}
-                className="w-full accent-indigo-500 h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-              />
             </div>
 
+            {/* 2. Sensación térmica en 3 botones claros */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  2. ¿Cuánto abrigo quieres?
+                </label>
+                <span className="text-[11px] font-semibold text-indigo-600">
+                  Clima actual: {temp}°C
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2.5">
+                {WARMTH_LEVELS.map((lvl) => {
+                  const Icon = lvl.icon;
+                  const active =
+                    (lvl.value === 1 && desiredWarmth <= 2) ||
+                    (lvl.value === 3 && desiredWarmth === 3) ||
+                    (lvl.value === 5 && desiredWarmth >= 4);
+                  return (
+                    <button
+                      key={lvl.value}
+                      type="button"
+                      onClick={() => setDesiredWarmth(lvl.value)}
+                      className={`p-2.5 rounded-2xl border text-left transition-all flex items-center gap-2.5 ${
+                        active
+                          ? 'bg-indigo-50/80 border-indigo-500 text-indigo-950 ring-2 ring-indigo-500/20'
+                          : 'bg-slate-50 border-slate-200/80 text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      <Icon className={`w-5 h-5 shrink-0 ${active ? 'text-indigo-600' : 'text-slate-400'}`} />
+                      <div>
+                        <p className="text-xs font-bold leading-tight">{lvl.label}</p>
+                        <p className="text-[10px] text-slate-400">{lvl.desc}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Botón Principal de Generar */}
             <button
               onClick={generateOutfit}
               disabled={generating}
-              className="w-full py-3 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 font-semibold rounded-xl text-sm flex justify-center items-center gap-2 shadow-lg shadow-indigo-500/25 transition-all"
+              className="w-full py-4 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 active:scale-[0.99] text-white font-bold rounded-2xl text-sm flex justify-center items-center gap-2 shadow-lg shadow-indigo-600/25 transition-all"
             >
-              {generating ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-              {generating ? 'Diseñando Outfit...' : 'Generar Outfit con IA'}
+              {generating ? (
+                <RefreshCw className="w-5 h-5 animate-spin" />
+              ) : (
+                <Sparkles className="w-5 h-5" />
+              )}
+              <span>{generating ? 'Combinando tu ropa...' : 'Recomendarme mi Outfit de Hoy'}</span>
             </button>
           </section>
 
-          {outfitAcceptedMsg && (
-            <div className="p-3 bg-emerald-950/50 border border-emerald-700/50 rounded-xl text-xs text-emerald-200 flex items-center gap-2">
-              <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>{outfitAcceptedMsg}</span>
-            </div>
-          )}
-
           {/* Resultado del Outfit */}
           {currentOutfit ? (
-            <section className="space-y-4">
+            <section className="bg-white p-5 rounded-3xl shadow-sm border border-slate-200/70 space-y-5">
               <div className="flex justify-between items-center">
-                <h3 className="text-base font-bold text-slate-200">Tu Look Sugerido</h3>
-                <span className="text-xs bg-indigo-500/10 text-indigo-400 px-2.5 py-1 rounded-full border border-indigo-500/20">Recomendado</span>
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900">Tu Look Recomendado</h3>
+                  <p className="text-xs text-slate-500">
+                    Pulsa el icono 🔄 en cualquier prenda si quieres cambiar solo esa pieza
+                  </p>
+                </div>
+                <button
+                  onClick={generateOutfit}
+                  className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-xl text-xs font-bold flex items-center gap-1"
+                  title="Generar otra combinación completa"
+                >
+                  <RefreshCw className="w-4 h-4" /> Otro
+                </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                {currentOutfit.map((item) => (
-                  <div key={item.id} className="bg-slate-800 rounded-xl overflow-hidden border border-slate-700/60 relative group">
-                    <img src={item.image} alt={item.name} className="w-full h-32 object-cover" />
-                    <div className="p-2.5">
-                      <p className="text-xs font-semibold text-slate-200 truncate">{item.name}</p>
-                      <p className="text-[10px] text-indigo-300 font-medium">
-                        {GARMENT_TYPES.find(t => t.id === item.subcategory)?.label || item.subcategory || item.category} • {item.color}
-                      </p>
+              {/* Grid de Prendas del Outfit */}
+              <div className="grid grid-cols-2 gap-3.5">
+                {currentOutfit.map((item) => {
+                  const slot = getSlotFromType(item.subcategory, item.category);
+                  const typeLabel =
+                    GARMENT_TYPES.find(t => t.id === item.subcategory)?.singular ||
+                    item.subcategory ||
+                    item.category;
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="bg-slate-50 rounded-2xl overflow-hidden border border-slate-200/80 relative group flex flex-col"
+                    >
+                      <div className="relative">
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-full h-36 object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => swapSingleOutfitItem(slot, item.id)}
+                          title="Cambiar solo esta prenda"
+                          className="absolute top-2 right-2 bg-white/90 hover:bg-indigo-600 text-slate-700 hover:text-white p-1.5 rounded-xl shadow-md transition-colors"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="absolute bottom-2 left-2 bg-white/95 text-slate-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm">
+                          {typeLabel}
+                        </span>
+                      </div>
+                      <div className="p-3">
+                        <p className="text-xs font-bold text-slate-800 truncate">{item.name}</p>
+                        <p className="text-[11px] text-slate-500">{item.color}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {aiNote && (
-                <div className="p-3 bg-indigo-950/40 border border-indigo-800/50 rounded-xl text-xs text-indigo-200 space-y-1">
-                  <p className="font-semibold flex items-center gap-1.5 text-indigo-400">
-                    <Sparkles className="w-3.5 h-3.5" /> Nota del Estilista:
-                  </p>
-                  <p>{aiNote}</p>
+                <div className="p-3.5 bg-indigo-50/70 border border-indigo-100 rounded-2xl text-xs text-indigo-950 flex items-start gap-2.5">
+                  <Sparkles className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+                  <p className="leading-relaxed">{aiNote}</p>
                 </div>
               )}
 
-              {/* Valoración de 0 a 10 Estrellas y Botones de Aceptar o Rechazar */}
-              <div className="bg-slate-800/60 border border-slate-700/70 rounded-2xl p-3.5 space-y-3">
-                <div className="space-y-1.5">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-slate-300 font-medium">Valora este Outfit (0 a 10 estrellas):</span>
-                    <span className="font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full">
+              {/* Valoración de 0 a 10 Estrellas + Aceptar / Rechazar */}
+              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200/80 space-y-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-slate-700">
+                      Puntúa este look (0 a 10):
+                    </span>
+                    <span className="text-xs font-extrabold text-amber-600 bg-amber-100 px-2.5 py-0.5 rounded-full">
                       {outfitRating} / 10 ⭐
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between gap-0.5 pt-1">
+                  <div className="flex items-center justify-between gap-0.5 bg-white p-2 rounded-xl border border-slate-200/70">
                     <button
                       type="button"
                       onClick={() => setOutfitRating(0)}
-                      className={`px-1.5 py-1 rounded text-[10px] font-bold border transition-all ${
+                      className={`px-2 py-1 rounded-lg text-xs font-bold transition-all ${
                         outfitRating === 0
-                          ? 'bg-rose-600 text-white border-rose-500'
-                          : 'bg-slate-900 text-slate-400 border-slate-700 hover:text-slate-200'
+                          ? 'bg-rose-600 text-white'
+                          : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
                       }`}
-                      title="0 estrellas"
                     >
                       0
                     </button>
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((starValue) => (
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((val) => (
                       <button
                         type="button"
-                        key={starValue}
-                        onClick={() => setOutfitRating(starValue)}
-                        className="p-1 focus:outline-none transition-transform hover:scale-110"
-                        title={`${starValue} estrellas`}
+                        key={val}
+                        onClick={() => setOutfitRating(val)}
+                        className="p-0.5 focus:outline-none active:scale-125 transition-transform"
                       >
                         <Star
                           className={`w-5 h-5 ${
-                            starValue <= outfitRating
+                            val <= outfitRating
                               ? 'text-amber-400 fill-amber-400'
-                              : 'text-slate-600'
+                              : 'text-slate-200 fill-slate-200'
                           }`}
                         />
                       </button>
@@ -1041,159 +1227,147 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2.5 pt-1">
+                {/* Botones grandes y claros de Decisión */}
+                <div className="grid grid-cols-1 gap-2.5">
                   <button
                     type="button"
-                    onClick={() => handleAcceptOutfit(false)}
-                    className="py-2.5 px-3 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all"
+                    onClick={() => handleAcceptOutfit(true)}
+                    className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 transition-all"
                   >
-                    <ThumbsUp className="w-4 h-4" /> Aceptar ({outfitRating}/10)
+                    <Check className="w-4 h-4" />
+                    <span>¡Me lo pongo hoy! (Guardar {outfitRating}/10 y enviar a colada)</span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!showRejectPanel && outfitRating > 4) setOutfitRating(3);
-                      setShowRejectPanel(!showRejectPanel);
-                    }}
-                    className={`py-2.5 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 border transition-all ${
-                      showRejectPanel
-                        ? 'bg-rose-600 text-white border-rose-500'
-                        : 'bg-rose-600/20 hover:bg-rose-600/30 border-rose-500/40 text-rose-300'
-                    }`}
-                  >
-                    <ThumbsDown className="w-4 h-4" /> Rechazar y dar Feedback
-                  </button>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => handleAcceptOutfit(true)}
-                  className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-medium text-slate-300 flex items-center justify-center gap-2 transition-all"
-                >
-                  <WashingMachine className="w-4 h-4 text-pink-400" /> Aceptar ({outfitRating}/10), usar hoy y enviar a colada
-                </button>
-              </div>
-
-              {/* Panel de Feedback al Rechazar */}
-              {showRejectPanel && (
-                <form
-                  onSubmit={handleRejectSubmit}
-                  className="bg-slate-800/90 border border-rose-500/40 rounded-2xl p-4 space-y-3 animate-fadeIn"
-                >
-                  <div className="flex justify-between items-center">
-                    <h4 className="text-xs font-bold text-rose-300 flex items-center gap-1.5">
-                      <MessageSquarePlus className="w-4 h-4" /> ¿Por qué rechazas este outfit?
-                    </h4>
+                  <div className="grid grid-cols-2 gap-2.5">
                     <button
                       type="button"
-                      onClick={() => setShowRejectPanel(false)}
-                      className="text-slate-400 hover:text-slate-200"
+                      onClick={() => handleAcceptOutfit(false)}
+                      className="py-2.5 px-3 bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
                     >
-                      <X className="w-4 h-4" />
+                      <ThumbsUp className="w-4 h-4" /> Solo guardar nota
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!showRejectPanel && outfitRating > 4) setOutfitRating(3);
+                        setShowRejectPanel(!showRejectPanel);
+                      }}
+                      className={`py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition-all ${
+                        showRejectPanel
+                          ? 'bg-rose-600 text-white border-rose-600'
+                          : 'bg-white hover:bg-rose-50 text-rose-600 border-rose-200'
+                      }`}
+                    >
+                      <ThumbsDown className="w-4 h-4" /> Rechazar look
                     </button>
                   </div>
+                </div>
 
-                  <p className="text-[11px] text-slate-400">
-                    Tu feedback se guardará en tu perfil para no repetir combinaciones que no te gusten y ajustar el nivel de abrigo.
-                  </p>
+                {/* Panel de Feedback en 1 toque cuando se rechaza */}
+                {showRejectPanel && (
+                  <form
+                    onSubmit={handleRejectSubmit}
+                    className="bg-white border border-rose-200 rounded-2xl p-4 space-y-3 shadow-sm"
+                  >
+                    <div className="flex justify-between items-center">
+                      <p className="text-xs font-extrabold text-rose-700 flex items-center gap-1.5">
+                        <MessageSquarePlus className="w-4 h-4" /> ¿Qué cambiarías para la próxima vez?
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setShowRejectPanel(false)}
+                        className="text-slate-400 hover:text-slate-600"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
 
-                  <div className="flex flex-wrap gap-1.5">
-                    {FEEDBACK_REASONS.map(reason => {
-                      const active = selectedReasons.includes(reason.id);
-                      return (
-                        <button
-                          type="button"
-                          key={reason.id}
-                          onClick={() => toggleReason(reason.id)}
-                          className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium border transition-all ${
-                            active
-                              ? 'bg-rose-500/30 border-rose-400 text-rose-200'
-                              : 'bg-slate-900 border-slate-700 text-slate-400 hover:text-slate-300'
-                          }`}
-                        >
-                          {reason.label}
-                        </button>
-                      );
-                    })}
-                  </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {FEEDBACK_REASONS.map(reason => {
+                        const active = selectedReasons.includes(reason.id);
+                        return (
+                          <button
+                            type="button"
+                            key={reason.id}
+                            onClick={() => toggleReason(reason.id)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                              active
+                                ? 'bg-rose-600 text-white border-rose-600 shadow-sm'
+                                : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                            }`}
+                          >
+                            {reason.label}
+                          </button>
+                        );
+                      })}
+                    </div>
 
-                  <div className="space-y-1">
-                    <label className="text-[11px] text-slate-300 font-medium">
-                      Comentario adicional para tener en cuenta en el futuro (opcional):
-                    </label>
-                    <textarea
-                      rows={2}
-                      placeholder="Ej. No me gusta llevar esta sudadera con pantalón de vestir..."
+                    <input
+                      type="text"
+                      placeholder="Nota opcional (ej: no pegar pantalón beige con deportivas)..."
                       value={customFeedbackText}
                       onChange={(e) => setCustomFeedbackText(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-slate-100 focus:outline-none focus:border-rose-500"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-rose-400 focus:bg-white"
                     />
-                  </div>
 
-                  <button
-                    type="submit"
-                    className="w-full py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-xl text-xs shadow-lg transition-all"
-                  >
-                    Guardar Feedback y Generar Nuevo Outfit
-                  </button>
-                </form>
-              )}
+                    <button
+                      type="submit"
+                      className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs shadow transition-all"
+                    >
+                      Aprender de mi feedback y proponer otro Outfit
+                    </button>
+                  </form>
+                )}
+              </div>
             </section>
           ) : (
-            <div className="text-center py-10 text-slate-500 space-y-2">
-              <Shirt className="w-12 h-12 mx-auto stroke-1 text-slate-600" />
-              <p className="text-xs">Pulsa el botón superior para crear tu combinación del día.</p>
+            <div className="bg-white rounded-3xl p-8 text-center border border-slate-200/70 space-y-2">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto">
+                <Shirt className="w-6 h-6" />
+              </div>
+              <p className="text-sm font-bold text-slate-800">¿Listo para vestirte?</p>
+              <p className="text-xs text-slate-500">
+                Elige tu plan arriba y pulsa el botón morado para recibir tu recomendación.
+              </p>
             </div>
           )}
 
-          {/* Historial de Feedback Aprendido */}
+          {/* Historial compacto de gustos aprendidos */}
           {feedbackHistory.length > 0 && (
-            <section className="bg-slate-800/40 border border-slate-800 rounded-2xl p-3.5 space-y-2.5">
+            <section className="bg-white border border-slate-200/70 rounded-3xl p-4 space-y-3">
               <div className="flex justify-between items-center">
-                <h4 className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                  <History className="w-3.5 h-3.5 text-indigo-400" /> Aprendizaje de tus Gustos ({feedbackHistory.length})
+                <h4 className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                  <History className="w-4 h-4 text-indigo-600" /> Tus Valoraciones Recientes ({feedbackHistory.length})
                 </h4>
                 <button
                   onClick={() => updateUserFeedback([])}
-                  className="text-[10px] text-slate-500 hover:text-rose-400"
+                  className="text-[11px] text-slate-400 hover:text-rose-600 font-medium"
                 >
-                  Limpiar historial
+                  Borrar historial
                 </button>
               </div>
-              <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
-                {feedbackHistory.slice(0, 5).map(item => (
+              <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                {feedbackHistory.slice(0, 4).map(item => (
                   <div
                     key={item.id}
-                    className="p-2 rounded-xl bg-slate-900/70 border border-slate-800 text-[11px] flex flex-col gap-0.5"
+                    className="p-2.5 rounded-2xl bg-slate-50 border border-slate-200/60 text-xs flex items-center justify-between gap-2"
                   >
-                    <div className="flex justify-between items-center">
-                      <span
-                        className={`font-semibold flex items-center gap-1.5 ${
-                          item.status === 'accepted' ? 'text-emerald-400' : 'text-rose-400'
-                        }`}
-                      >
-                        <span>{item.status === 'accepted' ? '✓ Aceptado' : '✗ Rechazado'}</span>
-                        {typeof item.rating === 'number' && (
-                          <span className="text-amber-400 bg-amber-500/10 px-1.5 py-0.2 rounded border border-amber-500/30 text-[10px]">
-                            ⭐ {item.rating}/10
-                          </span>
-                        )}
-                      </span>
-                      <span className="text-[10px] text-slate-500">{item.date}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-slate-800 truncate">{item.summary}</p>
+                      {item.comment && (
+                        <p className="text-[11px] text-slate-500 truncate">{item.comment}</p>
+                      )}
                     </div>
-                    <p className="text-slate-300 truncate">{item.summary}</p>
-                    {item.reasons?.length > 0 && (
-                      <p className="text-[10px] text-slate-400">
-                        Motivo:{' '}
-                        {item.reasons
-                          .map(r => FEEDBACK_REASONS.find(fr => fr.id === r)?.label || r)
-                          .join(', ')}
-                      </p>
-                    )}
-                    {item.comment && item.status === 'rejected' && (
-                      <p className="text-[10px] text-indigo-300 italic">"{item.comment}"</p>
-                    )}
+                    <span
+                      className={`shrink-0 px-2.5 py-1 rounded-full font-bold text-[11px] ${
+                        item.status === 'accepted'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : 'bg-rose-100 text-rose-800'
+                      }`}
+                    >
+                      ⭐ {typeof item.rating === 'number' ? `${item.rating}/10` : item.status}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -1202,199 +1376,228 @@ export default function App() {
         </main>
       )}
 
-      {/* Vista: Armario con Clasificación, Filtros y Eliminación */}
+      {/* =====================================================================
+          VISTA 2: MI ARMARIO (CLASIFICACIÓN, FILTROS RÁPIDOS Y ELIMINAR)
+      ====================================================================== */}
       {activeTab === 'closet' && (
-        <main className="p-4 flex-1 space-y-4">
+        <main className="p-5 flex-1 space-y-4">
           <div className="flex justify-between items-center">
-            <h2 className="text-base font-bold text-slate-200">
-              Mi Armario ({filteredGarments.length}/{garments.length})
-            </h2>
+            <div>
+              <h2 className="text-lg font-extrabold text-slate-900">Mi Armario</h2>
+              <p className="text-xs text-slate-500">
+                Mostrando {filteredGarments.length} de {garments.length} prendas
+              </p>
+            </div>
             <button
               onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-indigo-500/25 transition-all"
+              className="flex items-center gap-1.5 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-xs font-bold shadow-md shadow-indigo-600/20 transition-all"
             >
-              <Camera className="w-4 h-4" /> Añadir Prenda
+              <Camera className="w-4 h-4" /> + Añadir Prenda
             </button>
           </div>
 
-          {/* Barra de Filtros por Tipo de Prenda */}
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-1.5 text-xs text-slate-400">
-              <Filter className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Filtrar por tipo de prenda:</span>
-            </div>
-            <div className="flex gap-1.5 overflow-x-auto pb-2 scrollbar-thin">
-              <button
-                onClick={() => setSelectedFilter('ALL')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all ${
-                  selectedFilter === 'ALL'
-                    ? 'bg-indigo-600 text-white shadow'
-                    : 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700'
-                }`}
-              >
-                Todas ({garments.length})
-              </button>
-              {GARMENT_TYPES.map(type => {
-                const count = garments.filter(
-                  g => (g.subcategory || getDefaultSubcategory(g.category)) === type.id
-                ).length;
-                return (
-                  <button
-                    key={type.id}
-                    onClick={() => setSelectedFilter(type.id)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all ${
-                      selectedFilter === type.id
-                        ? 'bg-indigo-600 text-white shadow'
-                        : 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700'
-                    }`}
-                  >
-                    {type.label} ({count})
-                  </button>
-                );
-              })}
-            </div>
+          {/* Barra de Filtros por Categoría (Píldoras con Emoji y Contador) */}
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+            <button
+              onClick={() => setSelectedFilter('ALL')}
+              className={`px-3.5 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all ${
+                selectedFilter === 'ALL'
+                  ? 'bg-slate-900 text-white shadow-sm'
+                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              Todo ({garments.length})
+            </button>
+            {GARMENT_TYPES.map(type => {
+              const count = garments.filter(
+                g => (g.subcategory || getDefaultSubcategory(g.category)) === type.id
+              ).length;
+              return (
+                <button
+                  key={type.id}
+                  onClick={() => setSelectedFilter(type.id)}
+                  className={`px-3.5 py-2 rounded-2xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-all ${
+                    selectedFilter === type.id
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <span>{type.emoji}</span>
+                  <span>{type.label}</span>
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                    selectedFilter === type.id ? 'bg-indigo-500 text-white' : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
+          {/* Listado de Prendas */}
           {filteredGarments.length === 0 ? (
-            <div className="text-center py-10 bg-slate-800/40 rounded-2xl border border-slate-800 p-6 space-y-3">
-              <Shirt className="w-10 h-10 mx-auto text-indigo-400 stroke-1" />
-              <p className="text-xs text-slate-400">
+            <div className="bg-white rounded-3xl p-8 text-center border border-slate-200/70 space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto">
+                <Camera className="w-6 h-6" />
+              </div>
+              <p className="text-sm font-bold text-slate-800">
                 {selectedFilter === 'ALL'
-                  ? 'Tu armario está vacío. ¡Añade tu primera prenda con la cámara!'
-                  : `No tienes prendas clasificadas en "${GARMENT_TYPES.find(t => t.id === selectedFilter)?.label}".`}
+                  ? 'Tu armario está vacío'
+                  : `No tienes prendas en "${GARMENT_TYPES.find(t => t.id === selectedFilter)?.label}"`}
               </p>
               {selectedFilter !== 'ALL' ? (
                 <button
                   onClick={() => setSelectedFilter('ALL')}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold border border-slate-700"
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold"
                 >
-                  Ver todas las prendas
+                  Ver todas las categorías
                 </button>
               ) : (
                 <button
                   onClick={() => setShowAddModal(true)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold"
+                  className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold"
                 >
-                  <Plus className="w-4 h-4" /> Fotografiar Prenda
+                  Hacer foto a mi primera prenda
                 </button>
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
-              {filteredGarments.map((g) => {
-                const subcatLabel =
-                  GARMENT_TYPES.find(t => t.id === (g.subcategory || getDefaultSubcategory(g.category)))?.label ||
-                  g.subcategory ||
-                  g.category;
-
-                return (
-                  <div
-                    key={g.id}
-                    className={`bg-slate-800 rounded-xl overflow-hidden border flex flex-col justify-between ${
-                      g.inLaundry ? 'border-amber-500/40 opacity-70' : 'border-slate-700'
-                    } relative`}
-                  >
-                    <div>
-                      <div className="relative">
-                        <img src={g.image} alt={g.name} className="w-full h-32 object-cover" />
-                        <span className="absolute bottom-1.5 left-1.5 bg-slate-900/85 text-indigo-300 text-[10px] font-medium px-2 py-0.5 rounded-md border border-slate-700">
-                          {subcatLabel}
-                        </span>
-                      </div>
-
-                      <div className="p-2.5 space-y-1.5">
-                        <p className="text-xs font-semibold text-slate-200 truncate">{g.name}</p>
-                        <p className="text-[10px] text-slate-400">
-                          {g.color} • Abrigo: {g.warmth}/5
-                        </p>
-
-                        {/* Selector rápido para reclasificar cualquier prenda existente */}
-                        {editingGarmentId === g.id ? (
-                          <div className="pt-1 space-y-1">
-                            <label className="text-[10px] text-indigo-300 block">Cambiar tipo:</label>
-                            <select
-                              value={g.subcategory || getDefaultSubcategory(g.category)}
-                              onChange={(e) => changeGarmentSubcategory(g.id, e.target.value)}
-                              className="w-full bg-slate-900 border border-indigo-500 rounded-lg px-2 py-1 text-[11px] text-slate-100"
-                            >
-                              {GARMENT_TYPES.map(type => (
-                                <option key={type.id} value={type.id}>
-                                  {type.label}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setEditingGarmentId(g.id)}
-                            className="text-[10px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
-                          >
-                            <Tag className="w-3 h-3" /> Cambiar clasificación
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Botones de Acción: Colada y Eliminar */}
-                    <div className="p-2.5 pt-0 space-y-1.5">
-                      <button
-                        type="button"
-                        onClick={() => toggleLaundry(g.id)}
-                        className={`w-full py-1.5 text-[11px] rounded-lg font-medium transition-all flex items-center justify-center gap-1 ${
-                          g.inLaundry 
-                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' 
-                            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+            <div className="grid grid-cols-2 gap-3.5">
+              {filteredGarments.map((g) => (
+                <div
+                  key={g.id}
+                  className={`bg-white rounded-3xl overflow-hidden border transition-all flex flex-col justify-between shadow-sm ${
+                    g.inLaundry ? 'border-amber-300 bg-amber-50/20' : 'border-slate-200/80'
+                  }`}
+                >
+                  <div>
+                    <div className="relative">
+                      <img
+                        src={g.image}
+                        alt={g.name}
+                        className={`w-full h-36 object-cover ${g.inLaundry ? 'opacity-60' : ''}`}
+                      />
+                      <span
+                        className={`absolute top-2 left-2 text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm ${
+                          g.inLaundry
+                            ? 'bg-amber-500 text-white'
+                            : 'bg-emerald-500 text-white'
                         }`}
                       >
-                        <WashingMachine className="w-3 h-3" />
-                        {g.inLaundry ? 'En Colada' : 'Enviar a Colada'}
-                      </button>
+                        {g.inLaundry ? 'En Colada' : 'Limpia'}
+                      </span>
+                    </div>
 
-                      <button
-                        type="button"
-                        onClick={() => deleteGarment(g.id, g.name)}
-                        className="w-full py-1.5 text-[11px] rounded-lg font-medium bg-rose-500/15 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 transition-all flex items-center justify-center gap-1"
+                    <div className="p-3 space-y-2">
+                      <div>
+                        <p className="text-xs font-extrabold text-slate-800 truncate">{g.name}</p>
+                        <p className="text-[11px] text-slate-400 font-medium">
+                          {g.color} • Abrigo {g.warmth}/5
+                        </p>
+                      </div>
+
+                      {/* Selector directo para cambiar la clasificación con 1 toque */}
+                      <select
+                        value={g.subcategory || getDefaultSubcategory(g.category)}
+                        onChange={(e) => changeGarmentSubcategory(g.id, e.target.value)}
+                        className="w-full bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl px-2 py-1.5 text-[11px] font-bold text-slate-700 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                        title="Cambiar categoría de la prenda"
                       >
-                        <Trash2 className="w-3 h-3" /> Eliminar Prenda
-                      </button>
+                        {GARMENT_TYPES.map(type => (
+                          <option key={type.id} value={type.id}>
+                            {type.emoji} {type.label}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
-                );
-              })}
+
+                  {/* Botones de Acción Directos: Colada y Borrar */}
+                  <div className="px-3 pb-3 pt-1 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => toggleLaundry(g.id)}
+                      className={`flex-1 py-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition-all ${
+                        g.inLaundry
+                          ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      <WashingMachine className="w-3.5 h-3.5" />
+                      <span>{g.inLaundry ? 'Lavar' : 'Colada'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => deleteGarment(g.id)}
+                      title="Eliminar prenda del armario"
+                      className="p-2 rounded-xl bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </main>
       )}
 
-      {/* Vista: Lavandería */}
+      {/* =====================================================================
+          VISTA 3: CESTA DE LAVANDERÍA ("COLADA")
+      ====================================================================== */}
       {activeTab === 'laundry' && (
-        <main className="p-4 flex-1 space-y-4">
-          <h2 className="text-base font-bold text-slate-200">Cesta de Lavandería</h2>
-          
-          {garments.filter(g => g.inLaundry).length === 0 ? (
-            <div className="text-center py-12 text-slate-500 space-y-2">
-              <Check className="w-12 h-12 mx-auto stroke-1 text-emerald-500" />
-              <p className="text-xs">¡No tienes prendas en la colada! Todo está listo para usar.</p>
+        <main className="p-5 flex-1 space-y-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-lg font-extrabold text-slate-900">Cesta de Colada</h2>
+              <p className="text-xs text-slate-500">
+                {laundryCount === 0
+                  ? 'Toda tu ropa está limpia'
+                  : `${laundryCount} prenda(s) pendientes de lavar`}
+              </p>
+            </div>
+            {laundryCount > 0 && (
+              <button
+                onClick={washAllLaundry}
+                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-bold shadow-sm transition-all flex items-center gap-1.5"
+              >
+                <Check className="w-4 h-4" /> Lavar Todo
+              </button>
+            )}
+          </div>
+
+          {laundryCount === 0 ? (
+            <div className="bg-white rounded-3xl p-10 text-center border border-slate-200/70 space-y-2">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
+                <Check className="w-6 h-6" />
+              </div>
+              <p className="text-sm font-bold text-slate-800">¡Todo limpio!</p>
+              <p className="text-xs text-slate-500">
+                Todas tus prendas están disponibles para crear outfits.
+              </p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {garments.filter(g => g.inLaundry).map((g) => (
-                <div key={g.id} className="p-3 bg-slate-800 rounded-xl border border-slate-700 flex items-center justify-between">
+                <div
+                  key={g.id}
+                  className="p-3 bg-white rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between"
+                >
                   <div className="flex items-center gap-3">
-                    <img src={g.image} alt={g.name} className="w-10 h-10 rounded-lg object-cover" />
+                    <img src={g.image} alt={g.name} className="w-12 h-12 rounded-xl object-cover" />
                     <div>
-                      <p className="text-xs font-semibold text-slate-200">{g.name}</p>
-                      <p className="text-[10px] text-slate-400">
-                        {GARMENT_TYPES.find(t => t.id === g.subcategory)?.label || g.subcategory || g.category}
+                      <p className="text-xs font-bold text-slate-800">{g.name}</p>
+                      <p className="text-[11px] text-slate-400">
+                        {GARMENT_TYPES.find(t => t.id === g.subcategory)?.label || g.subcategory} • {g.color}
                       </p>
                     </div>
                   </div>
                   <button
                     onClick={() => toggleLaundry(g.id)}
-                    className="px-3 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-lg text-xs font-medium hover:bg-emerald-500/30"
+                    className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200 rounded-xl text-xs font-bold transition-all"
                   >
-                    Lavada
+                    Ya está limpia
                   </button>
                 </div>
               ))}
@@ -1403,109 +1606,105 @@ export default function App() {
         </main>
       )}
 
-      {/* Modal para Añadir Prenda con Cámara y Clasificación */}
+      {/* =====================================================================
+          MODAL RÁPIDO PARA AÑADIR PRENDA CON CÁMARA EN SEGUNDOS
+      ====================================================================== */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-4 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
-                <Camera className="w-4 h-4 text-indigo-400" /> Añadir Prenda al Armario
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                <Camera className="w-5 h-5 text-indigo-600" /> Nueva Prenda
               </h3>
               <button
                 onClick={() => {
                   stopCamera();
                   setShowAddModal(false);
                 }}
-                className="p-1 text-slate-400 hover:text-slate-200 rounded-lg"
+                className="p-1.5 bg-slate-100 text-slate-500 hover:text-slate-800 rounded-full"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             <form onSubmit={handleSaveGarment} className="space-y-4">
-              {/* Sección de Cámara / Previsualización de Foto */}
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-slate-300 block">Fotografía de la Prenda</label>
-
+              {/* 1. Foto con Cámara en Vivo o Galería */}
+              <div>
                 {cameraActive ? (
-                  <div className="relative rounded-xl overflow-hidden bg-black border border-slate-700">
+                  <div className="relative rounded-2xl overflow-hidden bg-black">
                     <video
                       ref={videoRef}
                       autoPlay
                       playsInline
                       muted
-                      className="w-full h-56 object-cover"
+                      className="w-full h-60 object-cover"
                     />
                     <div className="absolute bottom-3 inset-x-0 flex justify-center items-center gap-3 px-4">
                       <button
                         type="button"
                         onClick={toggleCameraFacing}
-                        className="p-2.5 bg-slate-900/80 text-slate-200 rounded-full border border-slate-700 hover:bg-slate-800"
-                        title="Cambiar cámara frontal/trasera"
+                        className="p-3 bg-white/90 text-slate-800 rounded-full shadow"
+                        title="Girar cámara"
                       >
                         <SwitchCamera className="w-4 h-4" />
                       </button>
                       <button
                         type="button"
                         onClick={capturePhotoFromVideo}
-                        className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-full shadow-lg flex items-center gap-1.5"
+                        className="px-6 py-3 bg-indigo-600 text-white font-bold text-xs rounded-full shadow-lg flex items-center gap-2"
                       >
                         <Camera className="w-4 h-4" /> Capturar Foto
                       </button>
                       <button
                         type="button"
                         onClick={stopCamera}
-                        className="p-2.5 bg-slate-900/80 text-rose-400 rounded-full border border-slate-700 hover:bg-slate-800"
-                        title="Cancelar cámara"
+                        className="p-3 bg-white/90 text-rose-600 rounded-full shadow"
                       >
                         <X className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
                 ) : newGarment.image ? (
-                  <div className="relative rounded-xl overflow-hidden border border-slate-700">
+                  <div className="relative rounded-2xl overflow-hidden border border-slate-200">
                     <img
                       src={newGarment.image}
-                      alt="Vista previa"
-                      className="w-full h-48 object-cover"
+                      alt="Prenda"
+                      className="w-full h-52 object-cover"
                     />
                     <button
                       type="button"
                       onClick={() => setNewGarment(prev => ({ ...prev, image: '' }))}
-                      className="absolute top-2 right-2 px-2.5 py-1 bg-slate-900/85 text-xs text-rose-300 rounded-lg border border-slate-700 hover:bg-slate-900"
+                      className="absolute top-3 right-3 px-3 py-1.5 bg-white/95 text-xs font-bold text-rose-600 rounded-xl shadow"
                     >
-                      Cambiar foto
+                      Repetir foto
                     </button>
                   </div>
                 ) : (
-                  <div className="border-2 border-dashed border-slate-700 rounded-xl p-4 text-center space-y-3 bg-slate-800/40">
-                    <Camera className="w-8 h-8 text-indigo-400 mx-auto stroke-1" />
-                    <p className="text-xs text-slate-400">
-                      Usa la cámara para fotografiar tu prenda o súbela desde tu galería
-                    </p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => startCamera()}
-                        className="py-2.5 px-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow"
-                      >
-                        <Camera className="w-4 h-4" /> Usar Cámara
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => nativeCameraInputRef.current?.click()}
-                        className="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5"
-                      >
-                        <ImageIcon className="w-4 h-4 text-indigo-400" /> Cámara / Galería
-                      </button>
-                    </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => startCamera()}
+                      className="p-5 bg-indigo-50 hover:bg-indigo-100 border-2 border-dashed border-indigo-300 rounded-2xl flex flex-col items-center justify-center gap-2 text-indigo-700 transition-all"
+                    >
+                      <Camera className="w-7 h-7" />
+                      <span className="text-xs font-bold">Cámara en Vivo</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => nativeCameraInputRef.current?.click()}
+                      className="p-5 bg-slate-50 hover:bg-slate-100 border-2 border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center gap-2 text-slate-700 transition-all"
+                    >
+                      <ImageIcon className="w-7 h-7 text-indigo-500" />
+                      <span className="text-xs font-bold">Móvil / Galería</span>
+                    </button>
                   </div>
                 )}
 
                 {cameraError && (
-                  <div className="text-[11px] text-amber-300 bg-amber-950/40 border border-amber-800/50 p-2 rounded-lg">
+                  <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 p-2.5 rounded-xl mt-2">
                     {cameraError}
-                  </div>
+                  </p>
                 )}
 
                 <input
@@ -1518,138 +1717,161 @@ export default function App() {
                 />
               </div>
 
-              {/* Nombre de la Prenda */}
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-300">Nombre de la prenda</label>
-                <input
-                  type="text"
-                  placeholder="Ej. Sudadera Capucha Gris"
-                  value={newGarment.name}
-                  onChange={(e) => setNewGarment(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
-                  required
-                />
-              </div>
-
-              {/* Clasificación (Tipo de Prenda) y Color */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-slate-300">Tipo de prenda</label>
-                  <select
-                    value={newGarment.subcategory}
-                    onChange={(e) => setNewGarment(prev => ({ ...prev, subcategory: e.target.value }))}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-2 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
-                  >
-                    {GARMENT_TYPES.map(type => (
-                      <option key={type.id} value={type.id}>
-                        {type.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-slate-300">Color principal</label>
-                  <input
-                    type="text"
-                    placeholder="Ej. Azul, Negro..."
-                    value={newGarment.color}
-                    onChange={(e) => setNewGarment(prev => ({ ...prev, color: e.target.value }))}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
-              </div>
-
-              {/* Ocasiones */}
+              {/* 2. Tipo de Prenda con Botones Táctiles */}
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-300">Ocasiones de uso</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {['Work', 'Going Out', 'Sport'].map((occ) => {
-                    const active = newGarment.occasion.includes(occ);
+                <label className="text-xs font-bold text-slate-700">¿Qué tipo de prenda es?</label>
+                <div className="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto pr-1">
+                  {GARMENT_TYPES.map(type => {
+                    const active = newGarment.subcategory === type.id;
                     return (
                       <button
                         type="button"
-                        key={occ}
-                        onClick={() => toggleNewGarmentOccasion(occ)}
-                        className={`py-1.5 text-xs rounded-xl font-medium border transition-all ${
+                        key={type.id}
+                        onClick={() => setNewGarment(prev => ({ ...prev, subcategory: type.id }))}
+                        className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center gap-2 border text-left transition-all ${
                           active
-                            ? 'bg-indigo-600/30 border-indigo-500 text-indigo-200'
-                            : 'bg-slate-800 border-slate-700 text-slate-400'
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                         }`}
                       >
-                        {OCCASION_LABELS[occ]}
+                        <span>{type.emoji}</span>
+                        <span className="truncate">{type.label}</span>
                       </button>
                     );
                   })}
                 </div>
               </div>
 
-              {/* Nivel de Abrigo */}
-              <div className="space-y-1">
-                <div className="flex justify-between text-xs text-slate-300">
-                  <span>Nivel de Abrigo</span>
-                  <span className="font-bold text-indigo-400">{newGarment.warmth} / 5</span>
+              {/* 3. Selección de Color en 1 Toque */}
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs font-bold text-slate-700">Color principal</label>
+                  <span className="text-xs font-semibold text-indigo-600">{newGarment.color}</span>
                 </div>
+                <div className="flex flex-wrap gap-2">
+                  {QUICK_COLORS.map(c => {
+                    const selected = newGarment.color.toLowerCase() === c.name.toLowerCase();
+                    return (
+                      <button
+                        type="button"
+                        key={c.name}
+                        onClick={() => setNewGarment(prev => ({ ...prev, color: c.name }))}
+                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition-all ${
+                          selected
+                            ? 'border-indigo-600 bg-indigo-50 text-indigo-900 ring-2 ring-indigo-500/20'
+                            : 'border-slate-200 bg-white text-slate-600'
+                        }`}
+                      >
+                        <span
+                          className={`w-3.5 h-3.5 rounded-full ${c.border ? 'border border-slate-300' : ''}`}
+                          style={{ backgroundColor: c.hex }}
+                        />
+                        <span>{c.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 4. Nombre opcional (se genera solo si lo dejas en blanco) */}
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700">
+                  Nombre <span className="text-slate-400 font-normal">(opcional, se rellena solo)</span>
+                </label>
                 <input
-                  type="range"
-                  min="1"
-                  max="5"
-                  value={newGarment.warmth}
-                  onChange={(e) => setNewGarment(prev => ({ ...prev, warmth: Number(e.target.value) }))}
-                  className="w-full accent-indigo-500 h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+                  type="text"
+                  placeholder={`Ej: ${
+                    GARMENT_TYPES.find(t => t.id === newGarment.subcategory)?.singular || 'Prenda'
+                  } ${newGarment.color}`}
+                  value={newGarment.name}
+                  onChange={(e) => setNewGarment(prev => ({ ...prev, name: e.target.value }))}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500 focus:bg-white"
                 />
+              </div>
+
+              {/* 5. Ocasión y Abrigo */}
+              <div className="grid grid-cols-3 gap-2">
+                {OCCASIONS.map((occ) => {
+                  const active = newGarment.occasion.includes(occ.id);
+                  return (
+                    <button
+                      type="button"
+                      key={occ.id}
+                      onClick={() => toggleNewGarmentOccasion(occ.id)}
+                      className={`py-2 text-xs rounded-xl font-bold border transition-all ${
+                        active
+                          ? 'bg-indigo-50 border-indigo-500 text-indigo-700'
+                          : 'bg-slate-50 border-slate-200 text-slate-400'
+                      }`}
+                    >
+                      {occ.label}
+                    </button>
+                  );
+                })}
               </div>
 
               <button
                 type="submit"
-                className="w-full py-3 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 font-semibold rounded-xl text-xs text-white flex justify-center items-center gap-2 shadow-lg shadow-indigo-500/25 transition-all"
+                className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl text-sm flex justify-center items-center gap-2 shadow-lg shadow-indigo-600/25 transition-all"
               >
-                <Plus className="w-4 h-4" /> Guardar en mi Armario
+                <Check className="w-4 h-4" /> Guardar en mi Armario
               </button>
             </form>
           </div>
         </div>
       )}
 
-      {/* Navegación Inferior Móvil */}
-      <nav className="fixed bottom-0 max-w-md w-full bg-slate-900/95 border-t border-slate-800 backdrop-blur flex justify-around p-2 z-20">
+      {/* =====================================================================
+          BARRA DE NAVEGACIÓN INFERIOR FLOTANTE Y MODERNA
+      ====================================================================== */}
+      <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 max-w-md w-[92%] bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xl shadow-slate-300/50 rounded-3xl flex justify-around items-center p-2 z-30">
         <button
           onClick={() => setActiveTab('generator')}
-          className={`flex flex-col items-center gap-1 p-2 rounded-xl text-[10px] transition-all ${
-            activeTab === 'generator' ? 'text-indigo-400 font-semibold' : 'text-slate-500 hover:text-slate-400'
+          className={`flex flex-col items-center gap-0.5 px-4 py-2 rounded-2xl text-[11px] font-bold transition-all ${
+            activeTab === 'generator'
+              ? 'text-indigo-600 bg-indigo-50'
+              : 'text-slate-400 hover:text-slate-700'
           }`}
         >
-          <Sparkles className="w-5 h-5" /> Outfits
+          <Sparkles className="w-5 h-5" />
+          <span>Hoy</span>
         </button>
 
         <button
           onClick={() => setActiveTab('closet')}
-          className={`flex flex-col items-center gap-1 p-2 rounded-xl text-[10px] transition-all ${
-            activeTab === 'closet' ? 'text-indigo-400 font-semibold' : 'text-slate-500 hover:text-slate-400'
+          className={`flex flex-col items-center gap-0.5 px-4 py-2 rounded-2xl text-[11px] font-bold transition-all ${
+            activeTab === 'closet'
+              ? 'text-indigo-600 bg-indigo-50'
+              : 'text-slate-400 hover:text-slate-700'
           }`}
         >
-          <Shirt className="w-5 h-5" /> Armario
+          <Shirt className="w-5 h-5" />
+          <span>Armario</span>
         </button>
 
+        {/* Botón Central Destacado de Cámara */}
         <button
-          onClick={() => {
-            setActiveTab('closet');
-            setShowAddModal(true);
-          }}
-          className="flex flex-col items-center gap-1 p-2 rounded-xl text-[10px] text-indigo-400 hover:text-indigo-300 transition-all"
+          onClick={() => setShowAddModal(true)}
+          className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold text-xs shadow-md shadow-indigo-500/30 hover:scale-105 transition-transform"
         >
-          <Camera className="w-5 h-5" /> Cámara
+          <Camera className="w-4 h-4" />
+          <span>+ Foto</span>
         </button>
 
         <button
           onClick={() => setActiveTab('laundry')}
-          className={`flex flex-col items-center gap-1 p-2 rounded-xl text-[10px] relative transition-all ${
-            activeTab === 'laundry' ? 'text-indigo-400 font-semibold' : 'text-slate-500 hover:text-slate-400'
+          className={`flex flex-col items-center gap-0.5 px-4 py-2 rounded-2xl text-[11px] font-bold relative transition-all ${
+            activeTab === 'laundry'
+              ? 'text-indigo-600 bg-indigo-50'
+              : 'text-slate-400 hover:text-slate-700'
           }`}
         >
-          <WashingMachine className="w-5 h-5" /> Colada
-          {garments.filter(g => g.inLaundry).length > 0 && (
-            <span className="absolute top-1 right-2 w-2 h-2 bg-amber-400 rounded-full"></span>
+          <WashingMachine className="w-5 h-5" />
+          <span>Colada</span>
+          {laundryCount > 0 && (
+            <span className="absolute top-1.5 right-3 w-4 h-4 bg-amber-500 text-white text-[9px] font-extrabold rounded-full flex items-center justify-center">
+              {laundryCount}
+            </span>
           )}
         </button>
       </nav>
