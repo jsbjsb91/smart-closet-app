@@ -29,7 +29,10 @@ import {
   Dumbbell,
   Sun,
   Cloud,
-  Snowflake
+  Snowflake,
+  Calendar,
+  Search,
+  KeyRound
 } from 'lucide-react';
 
 // Clasificaciones detalladas de prendas
@@ -58,8 +61,24 @@ const QUICK_COLORS = [
   { name: 'Burdeos', hex: '#881337' },
   { name: 'Rojo', hex: '#ef4444' },
   { name: 'Marrón', hex: '#78350f' },
-  { name: 'Rosa', hex: '#ec4899' }
+  { name: 'Rosa', hex: '#ec4899' },
+  { name: 'Amarillo', hex: '#eab308' }
 ];
+
+const WEEK_DAYS = [
+  { id: 'Lun', full: 'Lunes', defaultOccasion: 'Work' },
+  { id: 'Mar', full: 'Martes', defaultOccasion: 'Work' },
+  { id: 'Mié', full: 'Miércoles', defaultOccasion: 'Work' },
+  { id: 'Jue', full: 'Jueves', defaultOccasion: 'Work' },
+  { id: 'Vie', full: 'Viernes', defaultOccasion: 'Work' },
+  { id: 'Sáb', full: 'Sábado', defaultOccasion: 'Going Out' },
+  { id: 'Dom', full: 'Domingo', defaultOccasion: 'Going Out' }
+];
+
+const getColorHex = (colorName = '') => {
+  const found = QUICK_COLORS.find(c => c.name.toLowerCase() === String(colorName).toLowerCase());
+  return found ? found.hex : '#6366f1';
+};
 
 const getSlotFromType = (subcategory, fallbackCategory = 'Top') => {
   const found = GARMENT_TYPES.find(t => t.id === subcategory);
@@ -205,6 +224,27 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('generator');
   const [garments, setGarments] = useState([]);
   const [selectedFilter, setSelectedFilter] = useState('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // --- Calendario / Planificador Semanal ---
+  const [weeklyPlan, setWeeklyPlan] = useState({});
+  const [selectedDay, setSelectedDay] = useState(() => {
+    const dayIndex = new Date().getDay(); // 0 Dom, 1 Lun...
+    const map = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    return map[dayIndex] || 'Lun';
+  });
+
+  // --- Autodetección IA de Prendas por Foto ---
+  const [analyzingPhoto, setAnalyzingPhoto] = useState(false);
+  const [aiVisionBadge, setAiVisionBadge] = useState('');
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+  const [geminiApiKey, setGeminiApiKey] = useState(() => {
+    try {
+      return localStorage.getItem('smart_closet_gemini_api_key') || import.meta.env.VITE_GEMINI_API_KEY || '';
+    } catch {
+      return '';
+    }
+  });
 
   // --- Historial de Feedback del Usuario ---
   const [feedbackHistory, setFeedbackHistory] = useState([]);
@@ -229,15 +269,17 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // Cargar el armario y el feedback específico del usuario cuando inicia sesión
+  // Cargar el armario, el feedback y el plan semanal específico del usuario cuando inicia sesión
   useEffect(() => {
     if (!currentUser) {
       setGarments([]);
       setFeedbackHistory([]);
+      setWeeklyPlan({});
       return;
     }
     const closetKey = `smart_closet_garments_${currentUser.username}`;
     const feedbackKey = `smart_closet_feedback_${currentUser.username}`;
+    const plannerKey = `smart_closet_planner_${currentUser.username}`;
 
     try {
       const savedGarments = localStorage.getItem(closetKey);
@@ -255,11 +297,38 @@ export default function App() {
 
       const savedFeedback = localStorage.getItem(feedbackKey);
       setFeedbackHistory(savedFeedback ? JSON.parse(savedFeedback) : []);
+
+      const savedPlan = localStorage.getItem(plannerKey);
+      setWeeklyPlan(savedPlan ? JSON.parse(savedPlan) : {});
     } catch (e) {
       console.error('Error al cargar datos del usuario:', e);
       setGarments(INITIAL_GARMENTS);
     }
   }, [currentUser]);
+
+  // Guardar plan semanal del usuario actual
+  const updateUserPlanner = (newPlan) => {
+    setWeeklyPlan(newPlan);
+    if (currentUser) {
+      try {
+        localStorage.setItem(
+          `smart_closet_planner_${currentUser.username}`,
+          JSON.stringify(newPlan)
+        );
+      } catch (e) {
+        console.error('Error al guardar plan semanal:', e);
+      }
+    }
+  };
+
+  const handleSaveGeminiKey = (val) => {
+    setGeminiApiKey(val);
+    try {
+      localStorage.setItem('smart_closet_gemini_api_key', val.trim());
+    } catch (e) {
+      console.error('Error guardando API key:', e);
+    }
+  };
 
   // Guardar cambios en el armario del usuario actual
   const updateUserGarments = (newGarmentsList) => {
@@ -465,6 +534,191 @@ export default function App() {
     if (cameraActive) startCamera(nextMode);
   };
 
+  // --- Motor Dual de Visión IA (Gemini Vision API + Visión Local Cromática en Canvas) ---
+  const mapRgbToClosetColor = (r, g, b) => {
+    const rNorm = r / 255, gNorm = g / 255, bNorm = b / 255;
+    const max = Math.max(rNorm, gNorm, bNorm), min = Math.min(rNorm, gNorm, bNorm);
+    const l = (max + min) / 2;
+    let h = 0, s = 0;
+
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case rNorm: h = ((gNorm - bNorm) / d + (gNorm < bNorm ? 6 : 0)) * 60; break;
+        case gNorm: h = ((bNorm - rNorm) / d + 2) * 60; break;
+        case bNorm: h = ((rNorm - gNorm) / d + 4) * 60; break;
+      }
+    }
+
+    if (l < 0.18) return 'Negro';
+    if (l > 0.84 && s < 0.22) return 'Blanco';
+    if (s < 0.14) return l < 0.32 ? 'Negro' : l > 0.80 ? 'Blanco' : 'Gris';
+
+    if (h >= 18 && h <= 48 && s < 0.48 && l >= 0.55) return 'Beige';
+    if (h >= 12 && h <= 42 && l < 0.42) return 'Marrón';
+
+    if (h >= 345 || h < 12) return l < 0.35 ? 'Burdeos' : 'Rojo';
+    if (h >= 12 && h < 42) return l > 0.65 ? 'Beige' : 'Marrón';
+    if (h >= 42 && h < 70) return l > 0.60 && s < 0.45 ? 'Beige' : 'Amarillo';
+    if (h >= 70 && h < 168) return 'Verde';
+    if (h >= 168 && h < 260) return l < 0.32 ? 'Azul Marino' : 'Azul';
+    if (h >= 260 && h < 345) return l < 0.34 ? 'Burdeos' : 'Rosa';
+
+    return 'Gris';
+  };
+
+  const extractDominantGarmentFeatures = (dataUrl) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'Anonymous';
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const size = 120;
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, size, size);
+
+        const start = Math.floor(size * 0.275);
+        const regionSize = Math.floor(size * 0.45);
+        const { data } = ctx.getImageData(start, start, regionSize, regionSize);
+
+        const colorCounts = {};
+        let count = 0;
+
+        for (let i = 0; i < data.length; i += 16) {
+          const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+          if (a < 128) continue;
+          const mapped = mapRgbToClosetColor(r, g, b);
+          colorCounts[mapped] = (colorCounts[mapped] || 0) + 1;
+          count++;
+        }
+
+        const sortedColors = Object.entries(colorCounts).sort((a, b) => b[1] - a[1]);
+        let dominantColor = sortedColors[0]?.[0] || 'Negro';
+        if (
+          (dominantColor === 'Blanco' || dominantColor === 'Gris') &&
+          sortedColors[1] &&
+          sortedColors[1][1] > count * 0.25
+        ) {
+          dominantColor = sortedColors[1][0];
+        }
+
+        resolve({ dominantColor });
+      };
+      img.onerror = () => resolve({ dominantColor: 'Negro' });
+      img.src = dataUrl;
+    });
+  };
+
+  const buildCoherentGarmentDefaults = (subcategory, color) => {
+    const presetMap = {
+      Camisetas:    { warmth: 1, occasion: ['Going Out', 'Sport'], adj: 'Básica' },
+      Camisas:      { warmth: 3, occasion: ['Work', 'Going Out'], adj: 'Clásica' },
+      Sudaderas:    { warmth: 5, occasion: ['Going Out', 'Sport'], adj: 'Confort' },
+      Jerseys:      { warmth: 5, occasion: ['Work', 'Going Out'], adj: 'de Punto' },
+      Pantalones:   { warmth: 3, occasion: ['Work', 'Going Out'], adj: 'Chino' },
+      Vaqueros:     { warmth: 3, occasion: ['Going Out', 'Work'], adj: 'Denim' },
+      FaldasShorts: { warmth: 1, occasion: ['Going Out', 'Sport'], adj: 'Casual' },
+      Abrigos:      { warmth: 5, occasion: ['Work', 'Going Out'], adj: 'Térmico' },
+      Blazers:      { warmth: 3, occasion: ['Work', 'Going Out'], adj: 'Entallada' },
+      Calzado:      { warmth: 3, occasion: ['Work', 'Going Out', 'Sport'], adj: 'Urbano' }
+    };
+    const typeObj = GARMENT_TYPES.find(t => t.id === subcategory) || GARMENT_TYPES[0];
+    const preset = presetMap[typeObj.id] || presetMap.Camisetas;
+    return {
+      subcategory: typeObj.id,
+      color,
+      warmth: preset.warmth,
+      occasion: preset.occasion,
+      name: `${typeObj.singular} ${preset.adj} ${color}`.trim()
+    };
+  };
+
+  const analyzeGarmentImageWithAI = async (dataUrl, currentSubcat = 'Camisetas') => {
+    if (!dataUrl) return;
+    setAnalyzingPhoto(true);
+    setAiVisionBadge('Analizando prenda con IA...');
+
+    const { dominantColor } = await extractDominantGarmentFeatures(dataUrl);
+    const localSuggestion = buildCoherentGarmentDefaults(currentSubcat, dominantColor);
+
+    const activeKey = (geminiApiKey || import.meta.env.VITE_GEMINI_API_KEY || '').trim();
+
+    if (!activeKey) {
+      setNewGarment(prev => ({
+        ...prev,
+        image: dataUrl,
+        color: localSuggestion.color,
+        warmth: localSuggestion.warmth,
+        occasion: localSuggestion.occasion,
+        name: localSuggestion.name
+      }));
+      setAiVisionBadge(`✨ Detectado: ${localSuggestion.name} (IA Local)`);
+      setAnalyzingPhoto(false);
+      return;
+    }
+
+    try {
+      const { GoogleGenerativeAI } = await import('@google/generative-ai');
+      const genAI = new GoogleGenerativeAI(activeKey);
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+      const base64Data = dataUrl.split(',')[1];
+      const prompt = `Analiza esta foto de una prenda de ropa y devuelve EXCLUSIVAMENTE un JSON válido (sin markdown) con este esquema:
+{
+  "subcategory": uno de ["Camisetas","Camisas","Sudaderas","Jerseys","Pantalones","Vaqueros","FaldasShorts","Abrigos","Blazers","Calzado"],
+  "color": uno de ["Negro","Blanco","Gris","Beige","Azul Marino","Azul","Rojo","Burdeos","Verde","Rosa","Amarillo","Marrón"],
+  "warmth": número entero entre 1 (fresco), 3 (templado) o 5 (abrigo),
+  "occasion": array con 1 a 3 valores de ["Work","Going Out","Sport"],
+  "name": nombre descriptivo corto en español (ej. "Camisa Oxford Azul", "Sudadera Gris Capucha")
+}`;
+
+      const result = await model.generateContent([
+        prompt,
+        { inlineData: { data: base64Data, mimeType: 'image/jpeg' } }
+      ]);
+
+      const rawText = result.response.text().replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(rawText);
+
+      const validSubcat = GARMENT_TYPES.some(t => t.id === parsed.subcategory)
+        ? parsed.subcategory
+        : localSuggestion.subcategory;
+      const validWarmth = [1, 3, 5].includes(Number(parsed.warmth))
+        ? Number(parsed.warmth)
+        : localSuggestion.warmth;
+      const validOccasions = Array.isArray(parsed.occasion) && parsed.occasion.length > 0
+        ? parsed.occasion.filter(o => ['Work', 'Going Out', 'Sport'].includes(o))
+        : localSuggestion.occasion;
+
+      setNewGarment(prev => ({
+        ...prev,
+        image: dataUrl,
+        subcategory: validSubcat,
+        color: parsed.color || localSuggestion.color,
+        warmth: validWarmth,
+        occasion: validOccasions.length > 0 ? validOccasions : localSuggestion.occasion,
+        name: parsed.name?.trim() || localSuggestion.name
+      }));
+      setAiVisionBadge(`✨ Detectado por Gemini Vision: ${parsed.name || localSuggestion.name}`);
+    } catch (err) {
+      console.warn('Fallback a Visión Local por error en Gemini API:', err);
+      setNewGarment(prev => ({
+        ...prev,
+        image: dataUrl,
+        color: localSuggestion.color,
+        warmth: localSuggestion.warmth,
+        occasion: localSuggestion.occasion,
+        name: localSuggestion.name
+      }));
+      setAiVisionBadge(`✨ Detectado: ${localSuggestion.name} (IA Local)`);
+    } finally {
+      setAnalyzingPhoto(false);
+    }
+  };
+
   const capturePhotoFromVideo = () => {
     if (!videoRef.current) return;
     const video = videoRef.current;
@@ -488,6 +742,7 @@ export default function App() {
     const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
     setNewGarment(prev => ({ ...prev, image: dataUrl }));
     stopCamera();
+    analyzeGarmentImageWithAI(dataUrl, newGarment.subcategory);
   };
 
   const handleFileChange = (e) => {
@@ -518,6 +773,7 @@ export default function App() {
         const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
         setNewGarment(prev => ({ ...prev, image: compressedDataUrl }));
         stopCamera();
+        analyzeGarmentImageWithAI(compressedDataUrl, newGarment.subcategory);
       };
       img.src = event.target.result;
     };
@@ -815,13 +1071,186 @@ export default function App() {
     showToast('¡Toda la colada está limpia y de vuelta en tu armario!');
   };
 
-  // Prendas filtradas en la vista de Armario
-  const filteredGarments =
-    selectedFilter === 'ALL'
-      ? garments
-      : garments.filter(g => (g.subcategory || getDefaultSubcategory(g.category)) === selectedFilter);
+  // --- Funciones del Planificador / Calendario Semanal ---
+  const pickBestOutfitForOccasion = (occ = 'Work', excludedTopIds = []) => {
+    const cleanGarments = garments.filter(g => !g.inLaundry);
+    const occasionGarments = cleanGarments.filter(g => g.occasion?.includes(occ));
+
+    const getPool = (slot) => {
+      const byOcc = occasionGarments.filter(g => getSlotFromType(g.subcategory, g.category) === slot);
+      if (byOcc.length > 0) return byOcc;
+      return cleanGarments.filter(g => getSlotFromType(g.subcategory, g.category) === slot);
+    };
+
+    const allTops = getPool('Top');
+    const nonRepeatedTops = allTops.filter(t => !excludedTopIds.includes(String(t.id)));
+    const tops = nonRepeatedTops.length > 0 ? nonRepeatedTops : allTops;
+    const bottoms = getPool('Bottom');
+    const footwears = getPool('Footwear');
+    const outerwears = getPool('Outerwear');
+
+    if (tops.length === 0 || bottoms.length === 0 || footwears.length === 0) return null;
+
+    const rejectedFeedbacks = feedbackHistory.filter(f => f.status === 'rejected');
+    let warmthBias = 0;
+    rejectedFeedbacks.forEach(fb => {
+      if (fb.reasons?.includes('too_cold')) warmthBias += 0.5;
+      if (fb.reasons?.includes('too_warm')) warmthBias -= 0.5;
+    });
+    const targetWarmth = Math.min(5, Math.max(1, Math.round(desiredWarmth + warmthBias)));
+
+    let bestCandidate = null;
+    let bestScore = -9999;
+
+    for (let i = 0; i < 20; i++) {
+      const candidateTop = tops[Math.floor(Math.random() * tops.length)];
+      const candidateBottom = bottoms[Math.floor(Math.random() * bottoms.length)];
+      const candidateFootwear = footwears[Math.floor(Math.random() * footwears.length)];
+
+      let candidateOuterwear = null;
+      if ((targetWarmth >= 3 || isRaining) && outerwears.length > 0) {
+        candidateOuterwear = outerwears[Math.floor(Math.random() * outerwears.length)];
+      }
+
+      const candidateItems = [candidateTop, candidateBottom, candidateFootwear];
+      if (candidateOuterwear) candidateItems.push(candidateOuterwear);
+
+      const candidateIds = candidateItems.map(item => String(item.id)).sort().join('-');
+      const colorPairKey = `${candidateTop.color?.toLowerCase()}_${candidateBottom.color?.toLowerCase()}`;
+
+      let score = 0;
+      if (rejectedFeedbacks.some(fb => fb.comboKey === candidateIds)) score -= 50;
+      if (
+        rejectedFeedbacks.some(
+          fb =>
+            fb.topBottomKey === `${candidateTop.id}_${candidateBottom.id}` ||
+            (fb.reasons?.includes('colors') && fb.colorPairKey === colorPairKey)
+        )
+      ) {
+        score -= 25;
+      }
+
+      feedbackHistory
+        .filter(fb => fb.comboKey === candidateIds || fb.topBottomKey === `${candidateTop.id}_${candidateBottom.id}`)
+        .forEach(fb => {
+          if (typeof fb.rating === 'number') score += (fb.rating - 5) * 4;
+        });
+
+      const avgWarmth =
+        candidateItems.reduce((acc, it) => acc + (Number(it.warmth) || 3), 0) / candidateItems.length;
+      score -= Math.abs(avgWarmth - targetWarmth) * 4;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestCandidate = candidateItems;
+      }
+    }
+
+    return bestCandidate;
+  };
+
+  const assignCurrentOutfitToDay = (dayId) => {
+    if (!currentOutfit || currentOutfit.length === 0) return;
+    const dayObj = WEEK_DAYS.find(d => d.id === dayId);
+    const updated = {
+      ...weeklyPlan,
+      [dayId]: {
+        occasion: selectedOccasion,
+        warmth: desiredWarmth,
+        garmentIds: currentOutfit.map(g => String(g.id)),
+        note: aiNote || `Look preparado para ${dayObj?.full || dayId}`,
+        completed: false
+      }
+    };
+    updateUserPlanner(updated);
+    setSelectedDay(dayId);
+    showToast(`Look guardado para el ${dayObj?.full || dayId}`);
+  };
+
+  const generateSingleDayPlan = (dayId, customOccasion) => {
+    const dayMeta = WEEK_DAYS.find(d => d.id === dayId);
+    const occ = customOccasion || weeklyPlan[dayId]?.occasion || dayMeta?.defaultOccasion || 'Work';
+    const picked = pickBestOutfitForOccasion(occ);
+    if (!picked) {
+      alert('Necesitas al menos 1 Parte Superior, 1 Parte Inferior y 1 Calzado limpios para planificar.');
+      return;
+    }
+    const updated = {
+      ...weeklyPlan,
+      [dayId]: {
+        occasion: occ,
+        warmth: desiredWarmth,
+        garmentIds: picked.map(g => String(g.id)),
+        note: `${picked[0]?.name} + ${picked[1]?.name}`,
+        completed: false
+      }
+    };
+    updateUserPlanner(updated);
+    showToast(`Look del ${dayMeta?.full || dayId} actualizado`);
+  };
+
+  const generateFullWeekPlan = () => {
+    const newPlan = {};
+    const recentTopIds = [];
+
+    for (const day of WEEK_DAYS) {
+      const occ = weeklyPlan[day.id]?.occasion || day.defaultOccasion;
+      const picked = pickBestOutfitForOccasion(occ, recentTopIds.slice(-2));
+      if (!picked) {
+        alert('Necesitas al menos 1 Parte Superior, 1 Parte Inferior y 1 Calzado limpios en tu armario.');
+        return;
+      }
+      if (picked[0]) recentTopIds.push(String(picked[0].id));
+      newPlan[day.id] = {
+        occasion: occ,
+        warmth: desiredWarmth,
+        garmentIds: picked.map(g => String(g.id)),
+        note: `${picked[0]?.name} con ${picked[1]?.name}`,
+        completed: false
+      };
+    }
+
+    updateUserPlanner(newPlan);
+    showToast('✨ ¡Semana completa de outfits planificada con IA!');
+  };
+
+  const wearPlannedDayOutfit = (dayId) => {
+    const planEntry = weeklyPlan[dayId];
+    if (!planEntry || !planEntry.garmentIds?.length) return;
+    const idSet = new Set(planEntry.garmentIds.map(String));
+    updateUserGarments(
+      garments.map(g => (idSet.has(String(g.id)) ? { ...g, inLaundry: true } : g))
+    );
+    updateUserPlanner({
+      ...weeklyPlan,
+      [dayId]: { ...planEntry, completed: true }
+    });
+    showToast('¡Look usado hoy! Prendas enviadas a la cesta de colada.');
+  };
+
+  const clearPlannedDay = (dayId) => {
+    const copy = { ...weeklyPlan };
+    delete copy[dayId];
+    updateUserPlanner(copy);
+    showToast('Día liberado del calendario');
+  };
+
+  // Prendas filtradas en la vista de Armario (Categoría + Buscador Editorial)
+  const filteredGarments = garments.filter(g => {
+    const matchesCategory =
+      selectedFilter === 'ALL' ||
+      (g.subcategory || getDefaultSubcategory(g.category)) === selectedFilter;
+    const q = searchQuery.trim().toLowerCase();
+    const matchesSearch =
+      !q ||
+      g.name?.toLowerCase().includes(q) ||
+      g.color?.toLowerCase().includes(q) ||
+      g.subcategory?.toLowerCase().includes(q);
+    return matchesCategory && matchesSearch;
+  });
 
   const laundryCount = garments.filter(g => g.inLaundry).length;
+  const plannedDaysCount = WEEK_DAYS.filter(d => weeklyPlan[d.id]?.garmentIds?.length > 0).length;
 
   // ============================================================================
   // PANTALLA DE ACCESO MODERNA Y RÁPIDA (CON PERFILES DE 1 CLIC)
@@ -1184,6 +1613,44 @@ export default function App() {
                 </div>
               )}
 
+              {/* Atajo para Planificar este Outfit en un Día de la Semana */}
+              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-extrabold text-slate-700 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                    Guardar este look en tu Semana:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('planner')}
+                    className="text-[11px] font-bold text-indigo-600 hover:underline"
+                  >
+                    Ver calendario →
+                  </button>
+                </div>
+                <div className="grid grid-cols-7 gap-1.5">
+                  {WEEK_DAYS.map(day => {
+                    const isAssignedHere =
+                      weeklyPlan[day.id]?.garmentIds?.join('-') ===
+                      currentOutfit.map(g => String(g.id)).join('-');
+                    return (
+                      <button
+                        type="button"
+                        key={day.id}
+                        onClick={() => assignCurrentOutfitToDay(day.id)}
+                        className={`py-2 rounded-xl text-[11px] font-extrabold transition-all border ${
+                          isAssignedHere
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                            : 'bg-white text-slate-700 border-slate-200 hover:border-indigo-400 hover:text-indigo-600'
+                        }`}
+                      >
+                        {day.id}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Valoración de 0 a 10 Estrellas + Aceptar / Rechazar */}
               <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200/80 space-y-4">
                 <div className="space-y-2">
@@ -1377,7 +1844,229 @@ export default function App() {
       )}
 
       {/* =====================================================================
-          VISTA 2: MI ARMARIO (CLASIFICACIÓN, FILTROS RÁPIDOS Y ELIMINAR)
+          VISTA 1.5: CALENDARIO / PLANIFICADOR SEMANAL DE OUTFITS ("SEMANA")
+      ====================================================================== */}
+      {activeTab === 'planner' && (
+        <main className="p-5 flex-1 space-y-4">
+          {/* Cabecera Editorial del Planificador Semanal */}
+          <section className="bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 rounded-3xl p-5 border border-slate-700/70 shadow-xl space-y-4 text-slate-100">
+            <div className="flex justify-between items-start gap-3">
+              <div>
+                <h2 className="text-base font-extrabold text-white flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-indigo-400" />
+                  <span>Calendario Semanal</span>
+                </h2>
+                <p className="text-xs text-slate-300 mt-0.5">
+                  {plannedDaysCount} de 7 días planificados sin repetir parte superior seguida
+                </p>
+              </div>
+              <span className="px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
+                {plannedDaysCount}/7 días
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={generateFullWeekPlan}
+              className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-500 hover:opacity-95 text-white font-extrabold text-xs shadow-lg shadow-indigo-500/25 flex items-center justify-center gap-2 transition-all active:scale-[0.99]"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>Generar Semana Completa con IA</span>
+            </button>
+
+            {/* Cinta de Días Lunes a Domingo */}
+            <div className="grid grid-cols-7 gap-1.5 bg-slate-900/90 p-2 rounded-2xl border border-slate-800">
+              {WEEK_DAYS.map(day => {
+                const isSelected = selectedDay === day.id;
+                const dayPlan = weeklyPlan[day.id];
+                const hasPlan = dayPlan?.garmentIds?.length > 0;
+                return (
+                  <button
+                    key={day.id}
+                    type="button"
+                    onClick={() => setSelectedDay(day.id)}
+                    className={`relative flex flex-col items-center justify-center py-2.5 rounded-xl text-xs font-extrabold transition-all ${
+                      isSelected
+                        ? 'bg-gradient-to-b from-indigo-500 to-purple-600 text-white shadow-md shadow-indigo-500/30 scale-105'
+                        : hasPlan
+                        ? 'bg-slate-800 text-slate-200 border border-indigo-500/30 hover:bg-slate-700/80'
+                        : 'bg-slate-800/40 text-slate-400 hover:bg-slate-800'
+                    }`}
+                  >
+                    <span>{day.id}</span>
+                    <span
+                      className={`mt-1 w-1.5 h-1.5 rounded-full ${
+                        dayPlan?.completed
+                          ? 'bg-amber-400'
+                          : hasPlan
+                          ? isSelected
+                            ? 'bg-white'
+                            : 'bg-emerald-400'
+                          : 'bg-slate-700'
+                      }`}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Detalle del Día Seleccionado */}
+          {(() => {
+            const dayMeta = WEEK_DAYS.find(d => d.id === selectedDay) || WEEK_DAYS[0];
+            const dayPlan = weeklyPlan[selectedDay];
+            const plannedItems = (dayPlan?.garmentIds || [])
+              .map(id => garments.find(g => String(g.id) === String(id)))
+              .filter(Boolean);
+            const activeOccasion = dayPlan?.occasion || dayMeta.defaultOccasion;
+
+            return (
+              <section className="bg-slate-900 rounded-3xl p-5 border border-slate-800 shadow-lg space-y-4 text-slate-100">
+                <div className="flex flex-wrap justify-between items-center gap-2 border-b border-slate-800 pb-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-extrabold text-white">{dayMeta.full}</h3>
+                      {dayPlan?.completed && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                          ✓ Usado
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-400">
+                      Elige el tipo de ocasión para este día:
+                    </p>
+                  </div>
+
+                  {/* Selector rápido de Ocasión del Día */}
+                  <div className="flex gap-1.5">
+                    {OCCASIONS.map(occ => {
+                      const isOcc = activeOccasion === occ.id;
+                      return (
+                        <button
+                          key={occ.id}
+                          type="button"
+                          onClick={() => generateSingleDayPlan(selectedDay, occ.id)}
+                          className={`px-2.5 py-1 rounded-xl text-[11px] font-bold border transition-all ${
+                            isOcc
+                              ? 'bg-indigo-500/25 border-indigo-400 text-indigo-200'
+                              : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200'
+                          }`}
+                        >
+                          {occ.id === 'Work' ? 'Trabajo' : occ.id === 'Going Out' ? 'Salir' : 'Deporte'}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {plannedItems.length > 0 ? (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      {plannedItems.map(item => {
+                        const typeObj = GARMENT_TYPES.find(t => t.id === item.subcategory);
+                        return (
+                          <div
+                            key={item.id}
+                            className="bg-slate-800/90 rounded-2xl overflow-hidden border border-slate-700/70 flex flex-col justify-between"
+                          >
+                            <div className="relative h-28 bg-slate-950">
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className={`w-full h-full object-cover ${item.inLaundry ? 'opacity-50' : ''}`}
+                              />
+                              <span className="absolute bottom-1.5 left-2 px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-900/80 text-indigo-300 backdrop-blur-sm border border-white/10">
+                                {typeObj?.emoji} {typeObj?.singular || item.subcategory}
+                              </span>
+                              {item.inLaundry && (
+                                <span className="absolute top-1.5 right-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500 text-slate-950">
+                                  En colada
+                                </span>
+                              )}
+                            </div>
+                            <div className="p-2.5">
+                              <p className="text-xs font-bold text-slate-100 truncate">{item.name}</p>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span
+                                  className="w-2.5 h-2.5 rounded-full ring-1 ring-white/20 shrink-0"
+                                  style={{ backgroundColor: getColorHex(item.color) }}
+                                />
+                                <span className="text-[10px] text-slate-400 truncate">{item.color}</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {dayPlan?.note && (
+                      <p className="text-xs text-indigo-200 bg-indigo-950/50 border border-indigo-800/50 rounded-2xl p-3">
+                        ✨ {dayPlan.note}
+                      </p>
+                    )}
+
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => wearPlannedDayOutfit(selectedDay)}
+                        className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/20 transition-all"
+                      >
+                        <Check className="w-4 h-4" />
+                        <span>Usar Hoy y Enviar a Colada</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => generateSingleDayPlan(selectedDay)}
+                        title="Regenerar look de este día"
+                        className="bg-slate-800 hover:bg-slate-700 text-slate-200 p-2.5 rounded-xl border border-slate-700 transition-colors"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => clearPlannedDay(selectedDay)}
+                        title="Limpiar este día"
+                        className="bg-slate-800 hover:bg-rose-950 text-rose-400 p-2.5 rounded-xl border border-slate-700 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-6 space-y-3">
+                    <p className="text-xs text-slate-400">
+                      Aún no has asignado ningún outfit para el <strong className="text-slate-200">{dayMeta.full}</strong>.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                      <button
+                        type="button"
+                        onClick={() => generateSingleDayPlan(selectedDay)}
+                        className="py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-md transition-all"
+                      >
+                        <Sparkles className="w-4 h-4" /> Sugerir Look para {dayMeta.full}
+                      </button>
+                      {currentOutfit && (
+                        <button
+                          type="button"
+                          onClick={() => assignCurrentOutfitToDay(selectedDay)}
+                          className="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-indigo-500/30 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+                        >
+                          <Check className="w-4 h-4" /> Asignar el Look de Hoy
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </section>
+            );
+          })()}
+        </main>
+      )}
+
+      {/* =====================================================================
+          VISTA 2: MI ARMARIO (DISEÑO EDITORIAL, BUSCADOR Y TARJETAS PREMIUM)
       ====================================================================== */}
       {activeTab === 'closet' && (
         <main className="p-5 flex-1 space-y-4">
@@ -1390,10 +2079,31 @@ export default function App() {
             </div>
             <button
               onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-1.5 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-xs font-bold shadow-md shadow-indigo-600/20 transition-all"
+              className="flex items-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:opacity-95 text-white rounded-2xl text-xs font-bold shadow-md shadow-indigo-600/20 transition-all"
             >
               <Camera className="w-4 h-4" /> + Añadir Prenda
             </button>
+          </div>
+
+          {/* Buscador rápido por nombre, color o categoría */}
+          <div className="relative">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+            <input
+              type="text"
+              placeholder="Buscar prenda por nombre, color o tipo..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-white border border-slate-200/90 rounded-2xl pl-10 pr-9 py-2.5 text-xs text-slate-800 shadow-sm focus:outline-none focus:border-indigo-500"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
 
           {/* Barra de Filtros por Categoría (Píldoras con Emoji y Contador) */}
@@ -1434,23 +2144,26 @@ export default function App() {
             })}
           </div>
 
-          {/* Listado de Prendas */}
+          {/* Listado Editorial de Prendas */}
           {filteredGarments.length === 0 ? (
             <div className="bg-white rounded-3xl p-8 text-center border border-slate-200/70 space-y-3">
               <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto">
                 <Camera className="w-6 h-6" />
               </div>
               <p className="text-sm font-bold text-slate-800">
-                {selectedFilter === 'ALL'
+                {selectedFilter === 'ALL' && !searchQuery
                   ? 'Tu armario está vacío'
-                  : `No tienes prendas en "${GARMENT_TYPES.find(t => t.id === selectedFilter)?.label}"`}
+                  : 'No hay prendas que coincidan con este filtro'}
               </p>
-              {selectedFilter !== 'ALL' ? (
+              {selectedFilter !== 'ALL' || searchQuery ? (
                 <button
-                  onClick={() => setSelectedFilter('ALL')}
+                  onClick={() => {
+                    setSelectedFilter('ALL');
+                    setSearchQuery('');
+                  }}
                   className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold"
                 >
-                  Ver todas las categorías
+                  Ver todas las prendas
                 </button>
               ) : (
                 <button
@@ -1463,81 +2176,140 @@ export default function App() {
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3.5">
-              {filteredGarments.map((g) => (
-                <div
-                  key={g.id}
-                  className={`bg-white rounded-3xl overflow-hidden border transition-all flex flex-col justify-between shadow-sm ${
-                    g.inLaundry ? 'border-amber-300 bg-amber-50/20' : 'border-slate-200/80'
-                  }`}
-                >
-                  <div>
-                    <div className="relative">
-                      <img
-                        src={g.image}
-                        alt={g.name}
-                        className={`w-full h-36 object-cover ${g.inLaundry ? 'opacity-60' : ''}`}
-                      />
-                      <span
-                        className={`absolute top-2 left-2 text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm ${
-                          g.inLaundry
-                            ? 'bg-amber-500 text-white'
-                            : 'bg-emerald-500 text-white'
-                        }`}
-                      >
-                        {g.inLaundry ? 'En Colada' : 'Limpia'}
-                      </span>
-                    </div>
+              {filteredGarments.map((g) => {
+                const subcatId = g.subcategory || getDefaultSubcategory(g.category);
+                const typeObj = GARMENT_TYPES.find(t => t.id === subcatId);
+                return (
+                  <div
+                    key={g.id}
+                    className={`group relative bg-slate-800/95 backdrop-blur-sm rounded-3xl overflow-hidden border transition-all duration-300 flex flex-col justify-between shadow-lg hover:shadow-indigo-500/15 hover:-translate-y-0.5 ${
+                      g.inLaundry
+                        ? 'border-amber-500/40 ring-1 ring-amber-500/20'
+                        : 'border-slate-700/80 hover:border-indigo-500/50'
+                    }`}
+                  >
+                    <div>
+                      {/* Cabecera Visual Editorial */}
+                      <div className="relative h-40 w-full overflow-hidden bg-slate-900">
+                        <img
+                          src={g.image}
+                          alt={g.name}
+                          className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${
+                            g.inLaundry ? 'opacity-50 grayscale-[30%]' : ''
+                          }`}
+                        />
+                        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-slate-900/90 via-slate-900/30 to-transparent pointer-events-none" />
 
-                    <div className="p-3 space-y-2">
-                      <div>
-                        <p className="text-xs font-extrabold text-slate-800 truncate">{g.name}</p>
-                        <p className="text-[11px] text-slate-400 font-medium">
-                          {g.color} • Abrigo {g.warmth}/5
-                        </p>
+                        {/* Badge Flotante Estado */}
+                        <span
+                          className={`absolute top-2.5 left-2.5 text-[10px] font-bold px-2.5 py-0.5 rounded-full backdrop-blur-md shadow-sm flex items-center gap-1 ${
+                            g.inLaundry
+                              ? 'bg-amber-500/90 text-slate-950'
+                              : 'bg-emerald-500/85 text-white'
+                          }`}
+                        >
+                          {g.inLaundry && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-950 animate-pulse" />
+                          )}
+                          {g.inLaundry ? 'En Colada' : 'Limpia'}
+                        </span>
+
+                        {/* Badge Flotante Subcategoría */}
+                        <span className="absolute bottom-2 left-2.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-900/80 text-slate-100 backdrop-blur-md border border-white/10 flex items-center gap-1">
+                          <span>{typeObj?.emoji}</span>
+                          <span>{typeObj?.singular || subcatId}</span>
+                        </span>
                       </div>
 
-                      {/* Selector directo para cambiar la clasificación con 1 toque */}
-                      <select
-                        value={g.subcategory || getDefaultSubcategory(g.category)}
-                        onChange={(e) => changeGarmentSubcategory(g.id, e.target.value)}
-                        className="w-full bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl px-2 py-1.5 text-[11px] font-bold text-slate-700 focus:outline-none focus:border-indigo-500 cursor-pointer"
-                        title="Cambiar categoría de la prenda"
+                      {/* Cuerpo Editorial de Metadatos */}
+                      <div className="p-3.5 space-y-2.5">
+                        <p className="text-xs font-extrabold text-slate-100 truncate tracking-tight">
+                          {g.name}
+                        </p>
+
+                        {/* Fila Color (Swatch Real) + Abrigo Visual (1-5) */}
+                        <div className="flex items-center justify-between gap-2 text-[11px] text-slate-300">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span
+                              className="w-3 h-3 rounded-full shrink-0 ring-1 ring-white/25 shadow-inner"
+                              style={{ backgroundColor: getColorHex(g.color) }}
+                            />
+                            <span className="truncate font-semibold text-slate-300">{g.color}</span>
+                          </div>
+
+                          <div
+                            className="flex items-center gap-0.5 shrink-0 bg-slate-900/80 px-1.5 py-0.5 rounded-md border border-slate-700/70"
+                            title={`Nivel de abrigo: ${g.warmth || 3}/5`}
+                          >
+                            <Thermometer className="w-3 h-3 text-amber-400 mr-0.5" />
+                            {[1, 2, 3, 4, 5].map(level => (
+                              <span
+                                key={level}
+                                className={`w-1 h-2.5 rounded-full ${
+                                  level <= (g.warmth || 3) ? 'bg-amber-400' : 'bg-slate-700'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Badges Compactos de Ocasión */}
+                        {Array.isArray(g.occasion) && g.occasion.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {g.occasion.map(occ => (
+                              <span
+                                key={occ}
+                                className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-slate-700/60 text-indigo-300 border border-slate-600/50"
+                              >
+                                {occ === 'Work' ? 'Trabajo' : occ === 'Going Out' ? 'Salir' : 'Deporte'}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Selector directo para reclasificar con 1 toque */}
+                        <select
+                          value={subcatId}
+                          onChange={(e) => changeGarmentSubcategory(g.id, e.target.value)}
+                          className="w-full bg-slate-900/85 hover:bg-slate-900 border border-slate-700/80 rounded-xl px-2.5 py-1.5 text-[11px] font-bold text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer transition-colors"
+                          title="Cambiar categoría de la prenda"
+                        >
+                          {GARMENT_TYPES.map(type => (
+                            <option key={type.id} value={type.id}>
+                              {type.emoji} {type.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Pie de Acciones: Colada y Eliminar */}
+                    <div className="px-3.5 pb-3.5 pt-1 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => toggleLaundry(g.id)}
+                        className={`flex-1 py-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all ${
+                          g.inLaundry
+                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
+                            : 'bg-slate-700/70 text-slate-200 hover:bg-slate-700 border border-slate-600/50'
+                        }`}
                       >
-                        {GARMENT_TYPES.map(type => (
-                          <option key={type.id} value={type.id}>
-                            {type.emoji} {type.label}
-                          </option>
-                        ))}
-                      </select>
+                        <WashingMachine className="w-3.5 h-3.5" />
+                        <span>{g.inLaundry ? 'Lavar' : 'Colada'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => deleteGarment(g.id)}
+                        title="Eliminar prenda del armario"
+                        className="p-2 rounded-xl bg-rose-500/15 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/25 transition-all"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
-
-                  {/* Botones de Acción Directos: Colada y Borrar */}
-                  <div className="px-3 pb-3 pt-1 flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => toggleLaundry(g.id)}
-                      className={`flex-1 py-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition-all ${
-                        g.inLaundry
-                          ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
-                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                      }`}
-                    >
-                      <WashingMachine className="w-3.5 h-3.5" />
-                      <span>{g.inLaundry ? 'Lavar' : 'Colada'}</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => deleteGarment(g.id)}
-                      title="Eliminar prenda del armario"
-                      className="p-2 rounded-xl bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </main>
@@ -1613,19 +2385,54 @@ export default function App() {
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="bg-white rounded-t-3xl sm:rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-              <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-                <Camera className="w-5 h-5 text-indigo-600" /> Nueva Prenda
-              </h3>
-              <button
-                onClick={() => {
-                  stopCamera();
-                  setShowAddModal(false);
-                }}
-                className="p-1.5 bg-slate-100 text-slate-500 hover:text-slate-800 rounded-full"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                  <Camera className="w-5 h-5 text-indigo-600" /> Nueva Prenda
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Haz una foto y la IA detectará color, tipo y abrigo
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setShowApiKeyInput(!showApiKeyInput)}
+                  title="Configurar API Key de Gemini Vision (opcional)"
+                  className={`p-1.5 rounded-full border text-xs transition-colors ${
+                    geminiApiKey
+                      ? 'bg-indigo-50 text-indigo-600 border-indigo-200'
+                      : 'bg-slate-100 text-slate-500 border-transparent hover:text-slate-800'
+                  }`}
+                >
+                  <KeyRound className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => {
+                    stopCamera();
+                    setShowAddModal(false);
+                    setAiVisionBadge('');
+                  }}
+                  className="p-1.5 bg-slate-100 text-slate-500 hover:text-slate-800 rounded-full"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
+
+            {showApiKeyInput && (
+              <div className="p-3 bg-indigo-50/70 border border-indigo-100 rounded-2xl space-y-1.5">
+                <label className="text-[11px] font-bold text-indigo-900 block">
+                  Clave Gemini API (opcional para reconocimiento avanzado):
+                </label>
+                <input
+                  type="password"
+                  placeholder="AIzaSy... (Si se deja vacío usa Visión Local instantánea)"
+                  value={geminiApiKey}
+                  onChange={(e) => handleSaveGeminiKey(e.target.value)}
+                  className="w-full bg-white border border-indigo-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+            )}
 
             <form onSubmit={handleSaveGarment} className="space-y-4">
               {/* 1. Foto con Cámara en Vivo o Galería */}
@@ -1665,19 +2472,46 @@ export default function App() {
                     </div>
                   </div>
                 ) : newGarment.image ? (
-                  <div className="relative rounded-2xl overflow-hidden border border-slate-200">
-                    <img
-                      src={newGarment.image}
-                      alt="Prenda"
-                      className="w-full h-52 object-cover"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setNewGarment(prev => ({ ...prev, image: '' }))}
-                      className="absolute top-3 right-3 px-3 py-1.5 bg-white/95 text-xs font-bold text-rose-600 rounded-xl shadow"
-                    >
-                      Repetir foto
-                    </button>
+                  <div className="space-y-2">
+                    <div className="relative rounded-2xl overflow-hidden border border-slate-200">
+                      <img
+                        src={newGarment.image}
+                        alt="Prenda"
+                        className="w-full h-52 object-cover"
+                      />
+                      <div className="absolute top-3 right-3 flex gap-1.5">
+                        <button
+                          type="button"
+                          disabled={analyzingPhoto}
+                          onClick={() => analyzeGarmentImageWithAI(newGarment.image, newGarment.subcategory)}
+                          className="px-3 py-1.5 bg-indigo-600/95 hover:bg-indigo-700 text-xs font-bold text-white rounded-xl shadow flex items-center gap-1"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>{analyzingPhoto ? 'Analizando...' : 'Re-analizar IA'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNewGarment(prev => ({ ...prev, image: '' }));
+                            setAiVisionBadge('');
+                          }}
+                          className="px-3 py-1.5 bg-white/95 text-xs font-bold text-rose-600 rounded-xl shadow"
+                        >
+                          Repetir foto
+                        </button>
+                      </div>
+                    </div>
+
+                    {(analyzingPhoto || aiVisionBadge) && (
+                      <div className="px-3 py-2 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200/80 text-xs font-bold text-indigo-900 flex items-center gap-2">
+                        {analyzingPhoto ? (
+                          <RefreshCw className="w-3.5 h-3.5 text-indigo-600 animate-spin shrink-0" />
+                        ) : (
+                          <Sparkles className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                        )}
+                        <span className="truncate">{aiVisionBadge || 'Detectando color y prenda...'}</span>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-3">
@@ -1727,7 +2561,16 @@ export default function App() {
                       <button
                         type="button"
                         key={type.id}
-                        onClick={() => setNewGarment(prev => ({ ...prev, subcategory: type.id }))}
+                        onClick={() => {
+                          const suggestion = buildCoherentGarmentDefaults(type.id, newGarment.color);
+                          setNewGarment(prev => ({
+                            ...prev,
+                            subcategory: type.id,
+                            warmth: suggestion.warmth,
+                            occasion: suggestion.occasion,
+                            name: suggestion.name
+                          }));
+                        }}
                         className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center gap-2 border text-left transition-all ${
                           active
                             ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
@@ -1822,12 +2665,12 @@ export default function App() {
       )}
 
       {/* =====================================================================
-          BARRA DE NAVEGACIÓN INFERIOR FLOTANTE Y MODERNA
+          BARRA DE NAVEGACIÓN INFERIOR FLOTANTE Y MODERNA (5 ACCESOS)
       ====================================================================== */}
-      <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 max-w-md w-[92%] bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xl shadow-slate-300/50 rounded-3xl flex justify-around items-center p-2 z-30">
+      <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 max-w-md w-[94%] bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xl shadow-slate-300/50 rounded-3xl flex justify-around items-center p-2 z-30">
         <button
           onClick={() => setActiveTab('generator')}
-          className={`flex flex-col items-center gap-0.5 px-4 py-2 rounded-2xl text-[11px] font-bold transition-all ${
+          className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-2xl text-[11px] font-bold transition-all ${
             activeTab === 'generator'
               ? 'text-indigo-600 bg-indigo-50'
               : 'text-slate-400 hover:text-slate-700'
@@ -1838,8 +2681,34 @@ export default function App() {
         </button>
 
         <button
+          onClick={() => setActiveTab('planner')}
+          className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-2xl text-[11px] font-bold relative transition-all ${
+            activeTab === 'planner'
+              ? 'text-indigo-600 bg-indigo-50'
+              : 'text-slate-400 hover:text-slate-700'
+          }`}
+        >
+          <Calendar className="w-5 h-5" />
+          <span>Semana</span>
+          {plannedDaysCount > 0 && (
+            <span className="absolute top-1.5 right-2 w-4 h-4 bg-indigo-600 text-white text-[9px] font-extrabold rounded-full flex items-center justify-center">
+              {plannedDaysCount}
+            </span>
+          )}
+        </button>
+
+        {/* Botón Central Destacado de Cámara */}
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold text-xs shadow-md shadow-indigo-500/30 hover:scale-105 transition-transform"
+        >
+          <Camera className="w-4 h-4" />
+          <span>+ Foto</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('closet')}
-          className={`flex flex-col items-center gap-0.5 px-4 py-2 rounded-2xl text-[11px] font-bold transition-all ${
+          className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-2xl text-[11px] font-bold transition-all ${
             activeTab === 'closet'
               ? 'text-indigo-600 bg-indigo-50'
               : 'text-slate-400 hover:text-slate-700'
@@ -1849,18 +2718,9 @@ export default function App() {
           <span>Armario</span>
         </button>
 
-        {/* Botón Central Destacado de Cámara */}
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold text-xs shadow-md shadow-indigo-500/30 hover:scale-105 transition-transform"
-        >
-          <Camera className="w-4 h-4" />
-          <span>+ Foto</span>
-        </button>
-
         <button
           onClick={() => setActiveTab('laundry')}
-          className={`flex flex-col items-center gap-0.5 px-4 py-2 rounded-2xl text-[11px] font-bold relative transition-all ${
+          className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-2xl text-[11px] font-bold relative transition-all ${
             activeTab === 'laundry'
               ? 'text-indigo-600 bg-indigo-50'
               : 'text-slate-400 hover:text-slate-700'
@@ -1869,7 +2729,7 @@ export default function App() {
           <WashingMachine className="w-5 h-5" />
           <span>Colada</span>
           {laundryCount > 0 && (
-            <span className="absolute top-1.5 right-3 w-4 h-4 bg-amber-500 text-white text-[9px] font-extrabold rounded-full flex items-center justify-center">
+            <span className="absolute top-1.5 right-2 w-4 h-4 bg-amber-500 text-white text-[9px] font-extrabold rounded-full flex items-center justify-center">
               {laundryCount}
             </span>
           )}
