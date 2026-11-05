@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Shirt, 
   Sparkles, 
@@ -51,7 +51,8 @@ import {
   EyeOff,
   Mail,
   Send,
-  AlertCircle
+  AlertCircle,
+  Share2
 } from 'lucide-react';
 import {
   hashPasswordSecure,
@@ -159,6 +160,120 @@ const getDefaultSubcategory = (category) => {
   if (category === 'Outerwear') return 'Abrigos';
   if (category === 'Footwear') return 'Calzado';
   return 'Camisetas';
+};
+
+const analyzeWardrobeGaps = (garmentsList = []) => {
+  if (!garmentsList || garmentsList.length === 0) return [];
+  const gaps = [];
+
+  const tops = garmentsList.filter(g => getSlotFromType(g.subcategory, g.category) === 'Top');
+  const bottoms = garmentsList.filter(g => getSlotFromType(g.subcategory, g.category) === 'Bottom');
+  const footwears = garmentsList.filter(g => getSlotFromType(g.subcategory, g.category) === 'Footwear');
+  const outerwears = garmentsList.filter(g => getSlotFromType(g.subcategory, g.category) === 'Outerwear');
+
+  // 1. Ratio Tops vs Bottoms (Regla cápsula 2:1)
+  if (bottoms.length > 0 && tops.length < bottoms.length * 1.5) {
+    gaps.push({
+      id: 'top-ratio',
+      title: 'Ratio de Partes Superiores',
+      tag: 'Básico Cápsula',
+      desc: `Tienes ${tops.length} partes superiores para ${bottoms.length} partes inferiores. Añadir 2 o 3 partes de arriba multiplicará las rotaciones sin tener que comprar más pantalones.`
+    });
+  }
+
+  // 2. Cobertura de Lluvia
+  const hasRainWear = garmentsList.some(g =>
+    (g.name && (
+      g.name.toLowerCase().includes('chubasquero') ||
+      g.name.toLowerCase().includes('impermeable') ||
+      g.name.toLowerCase().includes('gabardina') ||
+      g.name.toLowerCase().includes('técnico') ||
+      g.name.toLowerCase().includes('parka')
+    )) ||
+    g.subcategory === 'coat'
+  );
+  if (!hasRainWear) {
+    gaps.push({
+      id: 'rain-wear',
+      title: 'Prenda para Lluvia / Impermeable',
+      tag: 'Climático',
+      desc: 'No dispones de un chubasquero, gabardina o abrigo técnico para cuando llueve o hay previsión de lluvia.'
+    });
+  }
+
+  // 3. Calzado Formal vs Casual
+  const hasFormalShoes = footwears.some(f =>
+    f.occasion?.includes('Wedding') ||
+    f.occasion?.includes('Elegant Night') ||
+    f.occasion?.includes('Dinner') ||
+    f.subcategory === 'dress_shoes' ||
+    f.subcategory === 'heels' ||
+    f.subcategory === 'loafers' ||
+    (f.name && (
+      f.name.toLowerCase().includes('mocasín') ||
+      f.name.toLowerCase().includes('tacón') ||
+      f.name.toLowerCase().includes('zapato') ||
+      f.name.toLowerCase().includes('oxford') ||
+      f.name.toLowerCase().includes('elegante')
+    ))
+  );
+  if (!hasFormalShoes && footwears.length > 0) {
+    gaps.push({
+      id: 'formal-shoes',
+      title: 'Calzado Formal / Vestir',
+      tag: 'Eventos & Noche',
+      desc: 'Tu calzado actual es principalmente informal. Unos zapatos de vestir, mocasines o tacones abrirán la puerta a looks de Boda, Noche elegante o Cenas.'
+    });
+  }
+
+  // 4. Calzado Deportivo para Gimnasio
+  const hasSportShoes = footwears.some(f =>
+    f.occasion?.includes('Gym') ||
+    f.subcategory === 'sneakers' ||
+    (f.name && (
+      f.name.toLowerCase().includes('deportiv') ||
+      f.name.toLowerCase().includes('running') ||
+      f.name.toLowerCase().includes('gym')
+    ))
+  );
+  if (!hasSportShoes && footwears.length > 0) {
+    gaps.push({
+      id: 'sport-shoes',
+      title: 'Zapatillas de Entrenamiento / Gym',
+      tag: 'Gimnasio & Sport',
+      desc: 'No tienes calzado asignado a la ocasión Gimnasio o entrenamientos activos.'
+    });
+  }
+
+  // 5. Camisa o Blusa Versátil
+  const hasFormalTop = tops.some(t =>
+    t.subcategory === 'shirt' ||
+    t.subcategory === 'blouse' ||
+    (t.name && (
+      t.name.toLowerCase().includes('camisa') ||
+      t.name.toLowerCase().includes('blusa')
+    ))
+  );
+  if (!hasFormalTop && tops.length > 0) {
+    gaps.push({
+      id: 'formal-top',
+      title: 'Camisa o Blusa de Fondo de Armario',
+      tag: 'Fondo de Armario',
+      desc: 'Una camisa de lino o algodón blanca o azul añade sofisticación instantánea tanto para Trabajo como para Cenar o Salir.'
+    });
+  }
+
+  // 6. Prenda de Capas / Abrigo Estructurada
+  if (outerwears.length === 0) {
+    gaps.push({
+      id: 'outerwear-missing',
+      title: 'Prenda de Abrigo (Blazer o Cazadora)',
+      tag: 'Estructura & Capas',
+      desc: 'No tienes prendas de abrigo registradas. Incorporar un blazer, sobrecamisa o chaqueta de entretiempo eleva cualquier look básico.'
+    });
+  }
+
+  return gaps;
 };
 
 // Datos iniciales de ejemplo con multietiquetado enriquecido para todas las ocasiones
@@ -363,6 +478,9 @@ export default function App() {
   const [tripIsRaining, setTripIsRaining] = useState(false);
   const [capsuleItems, setCapsuleItems] = useState([]);
   const [packedItemIds, setPackedItemIds] = useState([]);
+  const isTravelLoadedRef = useRef(false);
+  const [laundryRescueData, setLaundryRescueData] = useState(null);
+  const [showWardrobeGaps, setShowWardrobeGaps] = useState(false);
 
   // --- Historial de Feedback del Usuario ---
   const [feedbackHistory, setFeedbackHistory] = useState([]);
@@ -423,11 +541,20 @@ export default function App() {
       setGarments([]);
       setFeedbackHistory([]);
       setWeeklyPlan({});
+      setTripName('');
+      setTripDays(3);
+      setTripOccasion('Going Out');
+      setTripWarmth(3);
+      setTripIsRaining(false);
+      setCapsuleItems([]);
+      setPackedItemIds([]);
+      isTravelLoadedRef.current = false;
       return;
     }
     const closetKey = `smart_closet_garments_${currentUser.username}`;
     const feedbackKey = `smart_closet_feedback_${currentUser.username}`;
     const plannerKey = `smart_closet_planner_${currentUser.username}`;
+    const travelKey = `smart_closet_travel_${currentUser.username}`;
 
     try {
       const savedGarments = localStorage.getItem(closetKey);
@@ -449,11 +576,52 @@ export default function App() {
 
       const savedPlan = localStorage.getItem(plannerKey);
       setWeeklyPlan(savedPlan ? JSON.parse(savedPlan) : {});
+
+      const savedTravel = localStorage.getItem(travelKey);
+      if (savedTravel) {
+        const parsedT = JSON.parse(savedTravel);
+        if (typeof parsedT.tripName === 'string') setTripName(parsedT.tripName);
+        if (Number(parsedT.tripDays)) setTripDays(Number(parsedT.tripDays));
+        if (parsedT.tripOccasion) setTripOccasion(parsedT.tripOccasion);
+        if (Number(parsedT.tripWarmth)) setTripWarmth(Number(parsedT.tripWarmth));
+        if (typeof parsedT.tripIsRaining === 'boolean') setTripIsRaining(parsedT.tripIsRaining);
+        if (Array.isArray(parsedT.capsuleItems)) setCapsuleItems(parsedT.capsuleItems);
+        if (Array.isArray(parsedT.packedItemIds)) setPackedItemIds(parsedT.packedItemIds);
+      } else {
+        setTripName('');
+        setTripDays(3);
+        setTripOccasion('Going Out');
+        setTripWarmth(3);
+        setTripIsRaining(false);
+        setCapsuleItems([]);
+        setPackedItemIds([]);
+      }
+      isTravelLoadedRef.current = true;
     } catch (e) {
       console.error('Error al cargar datos del usuario:', e);
       setGarments(INITIAL_GARMENTS);
     }
   }, [currentUser?.username]);
+
+  // Guardar maleta de viaje del usuario actual en tiempo real
+  useEffect(() => {
+    if (!currentUser?.username || !isTravelLoadedRef.current) return;
+    try {
+      const travelKey = `smart_closet_travel_${currentUser.username}`;
+      const payload = {
+        tripName,
+        tripDays,
+        tripOccasion,
+        tripWarmth,
+        tripIsRaining,
+        capsuleItems,
+        packedItemIds
+      };
+      localStorage.setItem(travelKey, JSON.stringify(payload));
+    } catch (e) {
+      console.error('Error guardando maleta en localStorage:', e);
+    }
+  }, [currentUser?.username, tripName, tripDays, tripOccasion, tripWarmth, tripIsRaining, capsuleItems, packedItemIds]);
 
   // Guardar plan semanal del usuario actual
   const updateUserPlanner = (newPlan) => {
@@ -490,7 +658,7 @@ export default function App() {
         );
       } catch (e) {
         console.error('Error al guardar en localStorage:', e);
-        alert('Espacio de almacenamiento lleno. Intenta borrar alguna prenda antigua.');
+        showToast('Espacio de almacenamiento lleno. Intenta borrar alguna prenda antigua.');
       }
     }
   };
@@ -725,6 +893,7 @@ export default function App() {
       localStorage.removeItem(`smart_closet_garments_${uName}`);
       localStorage.removeItem(`smart_closet_feedback_${uName}`);
       localStorage.removeItem(`smart_closet_planner_${uName}`);
+      localStorage.removeItem(`smart_closet_travel_${uName}`);
       localStorage.removeItem(`smart_closet_salt_${uName}`);
       localStorage.removeItem('smart_closet_current_user');
 
@@ -1394,7 +1563,7 @@ export default function App() {
   const handleSaveGarment = (e, keepOpenForBurst = false) => {
     if (e?.preventDefault) e.preventDefault();
     if (!newGarment.image) {
-      alert('Primero haz una foto o sube una imagen de la prenda.');
+      showToast('Primero haz una foto o sube una imagen de la prenda.');
       return;
     }
 
@@ -1983,8 +2152,21 @@ export default function App() {
       const outerwears = getPool('Outerwear');
 
       if (tops.length === 0 || bottoms.length === 0 || footwears.length === 0) {
-        alert("Necesitas al menos 1 Parte Superior, 1 Parte Inferior y 1 Calzado limpios en tu armario.");
+        const missing = [];
+        if (tops.length === 0) missing.push({ slot: 'Top', name: 'Parte Superior' });
+        if (bottoms.length === 0) missing.push({ slot: 'Bottom', name: 'Parte Inferior' });
+        if (footwears.length === 0) missing.push({ slot: 'Footwear', name: 'Calzado' });
+
+        const dirtyRescuables = garments.filter(g =>
+          g.inLaundry && missing.some(m => getSlotFromType(g.subcategory, g.category) === m.slot)
+        );
+
         setGenerating(false);
+        if (dirtyRescuables.length > 0) {
+          setLaundryRescueData({ missingSlots: missing, dirtyRescuables });
+        } else {
+          showToast(`Necesitas al menos 1 ${missing.map(m => m.name).join(', ')} limpia en tu armario.`);
+        }
         return;
       }
 
@@ -2077,8 +2259,8 @@ export default function App() {
     }, 280);
   };
 
-  // Aceptar el Outfit sugerido
-  const handleAcceptOutfit = (sendToLaundry = false) => {
+  // Aceptar el Outfit sugerido (Modo Limpio, Modo Colada o Solo Favorito)
+  const handleAcceptOutfit = (mode = 'wear_clean') => {
     if (!currentOutfit) return;
     const topItem = currentOutfit[0];
     const bottomItem = currentOutfit[1];
@@ -2101,8 +2283,9 @@ export default function App() {
 
     updateUserFeedback([entry, ...feedbackHistory]);
 
-    if (sendToLaundry) {
-      const outfitIds = new Set(currentOutfit.map(g => String(g.id)));
+    const outfitIds = new Set(currentOutfit.map(g => String(g.id)));
+
+    if (mode === 'wear_and_laundry') {
       updateUserGarments(
         garments.map(g =>
           outfitIds.has(String(g.id))
@@ -2117,7 +2300,21 @@ export default function App() {
       );
       setCurrentOutfit(null);
       setLockedGarment(null);
-      showToast(`¡Look valorado (${outfitRating}/10 ⭐), usos sumados y enviado a colada!`);
+      showToast(`¡Look registrado (${outfitRating}/10 ⭐), usos sumados y enviado a colada!`);
+    } else if (mode === 'wear_clean') {
+      updateUserGarments(
+        garments.map(g =>
+          outfitIds.has(String(g.id))
+            ? {
+                ...g,
+                inLaundry: false,
+                wearCount: (Number(g.wearCount) || 0) + 1,
+                lastWornAt: todayStr
+              }
+            : g
+        )
+      );
+      showToast(`¡Me lo pongo hoy! Usos sumados al coste por puesta (${outfitRating}/10 ⭐)`);
     } else {
       showToast(`¡Guardado en tus favoritos con ${outfitRating}/10 ⭐!`);
     }
@@ -2174,6 +2371,79 @@ export default function App() {
   const washAllLaundry = () => {
     updateUserGarments(garments.map(g => ({ ...g, inLaundry: false })));
     showToast('¡Toda la colada está limpia y de vuelta en tu armario!');
+  };
+
+  const rescueGarmentFromLaundry = (id) => {
+    updateUserGarments(garments.map(g => String(g.id) === String(id) ? { ...g, inLaundry: false } : g));
+    showToast('Prenda rescatada de la colada y marcada como limpia');
+  };
+
+  const copyToClipboardFallback = (text, successMsg) => {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text)
+        .then(() => showToast(successMsg))
+        .catch(() => showToast('No se pudo copiar'));
+    } else {
+      showToast('Compartir no disponible en este navegador');
+    }
+  };
+
+  const handleShareLook = async () => {
+    if (!currentOutfit || currentOutfit.length === 0) return;
+    const pieces = currentOutfit
+      .map(g => {
+        const typeLabel =
+          GARMENT_TYPES.find(t => t.id === g.subcategory)?.singular ||
+          g.subcategory ||
+          g.category;
+        return `• ${g.name} (${typeLabel}, ${g.color})`;
+      })
+      .join('\n');
+    const noteText = aiNote ? `\n💡 Estilo: ${aiNote}\n` : '\n';
+    const textToShare = `✨ Mi Look de Hoy — Smart Closet:\n${pieces}${noteText}⭐ Puntuación: ${outfitRating}/10\n🎯 Ocasión: ${selectedOccasion}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Mi Look de Hoy — Smart Closet',
+          text: textToShare
+        });
+        showToast('¡Look compartido!');
+      } catch (err) {
+        if (err?.name !== 'AbortError') {
+          copyToClipboardFallback(textToShare, '¡Look copiado al portapapeles!');
+        }
+      }
+    } else {
+      copyToClipboardFallback(textToShare, '¡Look copiado al portapapeles!');
+    }
+  };
+
+  const handleShareTravelCapsule = async () => {
+    if (!capsuleItems || capsuleItems.length === 0) return;
+    const pieces = capsuleItems
+      .map(g => {
+        const isPacked = packedItemIds.includes(String(g.id));
+        return `${isPacked ? '✅' : '⬜'} ${g.name} (${g.color})`;
+      })
+      .join('\n');
+    const textToShare = `🧳 Maleta para ${tripName || 'Viaje'} (${tripDays} días):\n${pieces}\n\nProgreso: ${packedItemIds.length}/${capsuleItems.length} prendas listas.\nGenerado con Smart Closet`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Maleta de Viaje — ${tripName || 'Smart Closet'}`,
+          text: textToShare
+        });
+        showToast('¡Maleta compartida!');
+      } catch (err) {
+        if (err?.name !== 'AbortError') {
+          copyToClipboardFallback(textToShare, '¡Checklist de maleta copiado al portapapeles!');
+        }
+      }
+    } else {
+      copyToClipboardFallback(textToShare, '¡Checklist de maleta copiado al portapapeles!');
+    }
   };
 
   // --- Funciones del Planificador / Calendario Semanal ---
@@ -2271,7 +2541,7 @@ export default function App() {
     const occ = customOccasion || weeklyPlan[dayId]?.occasion || dayMeta?.defaultOccasion || 'Work';
     const picked = pickBestOutfitForOccasion(occ);
     if (!picked) {
-      alert('Necesitas al menos 1 Parte Superior, 1 Parte Inferior y 1 Calzado limpios para planificar.');
+      showToast('Necesitas al menos 1 Parte Superior, 1 Parte Inferior y 1 Calzado limpios para planificar.');
       return;
     }
     const colorHarmony = evaluateColorHarmony(picked);
@@ -2298,7 +2568,7 @@ export default function App() {
       const occ = weeklyPlan[day.id]?.occasion || day.defaultOccasion;
       const picked = pickBestOutfitForOccasion(occ, recentTopIds.slice(-2));
       if (!picked) {
-        alert('Necesitas al menos 1 Parte Superior, 1 Parte Inferior y 1 Calzado limpios en tu armario.');
+        showToast('Necesitas al menos 1 Parte Superior, 1 Parte Inferior y 1 Calzado limpios en tu armario.');
         return;
       }
       if (picked[0]) recentTopIds.push(String(picked[0].id));
@@ -2316,7 +2586,7 @@ export default function App() {
     showToast('✨ ¡Semana completa de outfits planificada con IA!');
   };
 
-  const wearPlannedDayOutfit = (dayId) => {
+  const wearPlannedDayOutfit = (dayId, sendToLaundry = true) => {
     const planEntry = weeklyPlan[dayId];
     if (!planEntry || !planEntry.garmentIds?.length) return;
     const idSet = new Set(planEntry.garmentIds.map(String));
@@ -2326,7 +2596,7 @@ export default function App() {
         idSet.has(String(g.id))
           ? {
               ...g,
-              inLaundry: true,
+              inLaundry: sendToLaundry,
               wearCount: (Number(g.wearCount) || 0) + 1,
               lastWornAt: todayStr
             }
@@ -2337,7 +2607,11 @@ export default function App() {
       ...weeklyPlan,
       [dayId]: { ...planEntry, completed: true }
     });
-    showToast('¡Look usado hoy! Usos actualizados y prendas en colada.');
+    showToast(
+      sendToLaundry
+        ? '¡Look usado hoy! Usos sumados y prendas enviadas a colada.'
+        : '¡Look usado hoy! Usos sumados al coste por puesta (prendas limpias).'
+    );
   };
 
   const clearPlannedDay = (dayId) => {
@@ -2539,6 +2813,9 @@ export default function App() {
           ) / pricedGarments.length
         ).toFixed(1)
       : null;
+
+  // Analítica de Huecos en el Armario Cápsula (Wardrobe Gaps)
+  const wardrobeGaps = useMemo(() => analyzeWardrobeGaps(garments), [garments]);
 
   // ============================================================================
   // PANTALLA DE ACCESO EDITORIAL ("QUIET LUXURY") CON PERFILES DE 1 CLIC
@@ -3396,13 +3673,23 @@ export default function App() {
                     Toca 🔄 en cualquier prenda para cambiar solo esa pieza
                   </p>
                 </div>
-                <button
-                  onClick={() => generateOutfit()}
-                  className="px-3 py-1.5 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-full text-xs font-bold flex items-center gap-1 transition-colors"
-                  title="Generar otra combinación completa"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" /> Otro
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleShareLook}
+                    className="px-3 py-1.5 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-full text-xs font-bold flex items-center gap-1.5 transition-colors border border-indigo-100 shadow-2xs"
+                    title="Compartir este look"
+                  >
+                    <Share2 className="w-3.5 h-3.5" /> Compartir
+                  </button>
+                  <button
+                    onClick={() => generateOutfit()}
+                    className="px-3 py-1.5 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-full text-xs font-bold flex items-center gap-1 transition-colors"
+                    title="Generar otra combinación completa"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" /> Otro
+                  </button>
+                </div>
               </div>
 
               {/* Grid Editorial de Prendas del Outfit (Proporción Vertical 4:5) */}
@@ -3540,24 +3827,37 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Botones grandes y claros de Decisión */}
-                <div className="grid grid-cols-1 gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => handleAcceptOutfit(true)}
-                    className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 transition-all"
-                  >
-                    <Check className="w-4 h-4" />
-                    <span>¡Me lo pongo hoy! (Guardar {outfitRating}/10 y enviar a colada)</span>
-                  </button>
-
-                  <div className="grid grid-cols-2 gap-2.5">
+                {/* Botones editoriales de Decisión */}
+                <div className="space-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <button
                       type="button"
-                      onClick={() => handleAcceptOutfit(false)}
-                      className="py-2.5 px-3 bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+                      onClick={() => handleAcceptOutfit('wear_clean')}
+                      className="py-3 px-3 bg-slate-900 hover:bg-slate-800 active:scale-[0.99] text-white font-bold rounded-2xl text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all"
+                      title="Suma 1 uso para amortizar el precio (CPW) y mantiene las prendas limpias para repetir look"
                     >
-                      <ThumbsUp className="w-4 h-4" /> Solo guardar nota
+                      <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                      <span>Me lo pongo (sigue limpia)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleAcceptOutfit('wear_and_laundry')}
+                      className="py-3 px-3 bg-emerald-700 hover:bg-emerald-800 active:scale-[0.99] text-white font-bold rounded-2xl text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all"
+                      title="Suma 1 uso al CPW y envía las prendas a la colada"
+                    >
+                      <WashingMachine className="w-3.5 h-3.5 text-emerald-200" />
+                      <span>Usar y a la colada</span>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleAcceptOutfit('favorite_only')}
+                      className="py-2.5 px-3 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-2xs"
+                    >
+                      <ThumbsUp className="w-3.5 h-3.5 text-emerald-600" /> Solo guardar nota
                     </button>
 
                     <button
@@ -3569,10 +3869,10 @@ export default function App() {
                       className={`py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition-all ${
                         showRejectPanel
                           ? 'bg-rose-600 text-white border-rose-600'
-                          : 'bg-white hover:bg-rose-50 text-rose-600 border-rose-200'
+                          : 'bg-white hover:bg-rose-50 text-rose-600 border-rose-200 shadow-2xs'
                       }`}
                     >
-                      <ThumbsDown className="w-4 h-4" /> Rechazar look
+                      <ThumbsDown className="w-3.5 h-3.5" /> Rechazar look
                     </button>
                   </div>
                 </div>
@@ -3868,33 +4168,46 @@ export default function App() {
                       </p>
                     )}
 
-                    <div className="flex gap-2 pt-1">
+                    <div className="flex flex-col sm:flex-row gap-2 pt-1">
                       <button
                         type="button"
-                        onClick={() => wearPlannedDayOutfit(selectedDay)}
+                        onClick={() => wearPlannedDayOutfit(selectedDay, false)}
                         className="flex-1 py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all"
+                        title="Suma 1 uso al CPW y mantiene las prendas limpias"
                       >
-                        <Check className="w-4 h-4 text-emerald-400" />
-                        <span>Usar Hoy y Enviar a Colada</span>
+                        <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                        <span>Usar Hoy (sigue limpia)</span>
                       </button>
 
                       <button
                         type="button"
-                        onClick={() => generateSingleDayPlan(selectedDay)}
-                        title="Regenerar look de este día"
-                        className="bg-slate-100 hover:bg-slate-200 text-slate-700 p-2.5 rounded-xl border border-slate-200/80 transition-colors"
+                        onClick={() => wearPlannedDayOutfit(selectedDay, true)}
+                        className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all"
+                        title="Suma 1 uso al CPW y envía las prendas a la colada"
                       >
-                        <RefreshCw className="w-4 h-4" />
+                        <WashingMachine className="w-3.5 h-3.5 text-emerald-200" />
+                        <span>Usar y a Colada</span>
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={() => clearPlannedDay(selectedDay)}
-                        title="Limpiar este día"
-                        className="bg-rose-50 hover:bg-rose-100 text-rose-600 p-2.5 rounded-xl border border-rose-200/60 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => generateSingleDayPlan(selectedDay)}
+                          title="Regenerar look de este día"
+                          className="bg-slate-100 hover:bg-slate-200 text-slate-700 p-2.5 rounded-xl border border-slate-200/80 transition-colors"
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => clearPlannedDay(selectedDay)}
+                          title="Limpiar este día"
+                          className="bg-rose-50 hover:bg-rose-100 text-rose-600 p-2.5 rounded-xl border border-rose-200/60 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </>
                 ) : (
@@ -4115,19 +4428,29 @@ export default function App() {
                           ✨ Con estas {capsuleItems.length} prendas creas hasta {outfitCombos} looks distintos
                         </p>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (packedItemIds.length === capsuleItems.length) {
-                            setPackedItemIds([]);
-                          } else {
-                            setPackedItemIds(capsuleItems.map(c => String(c.id)));
-                          }
-                        }}
-                        className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 transition-colors"
-                      >
-                        {packedItemIds.length === capsuleItems.length ? 'Desmarcar todo' : '✓ Marcar todas'}
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={handleShareTravelCapsule}
+                          className="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-xs font-bold text-indigo-700 transition-colors flex items-center gap-1 border border-indigo-100 shadow-2xs"
+                          title="Compartir checklist de la maleta"
+                        >
+                          <Share2 className="w-3.5 h-3.5" /> Compartir
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (packedItemIds.length === capsuleItems.length) {
+                              setPackedItemIds([]);
+                            } else {
+                              setPackedItemIds(capsuleItems.map(c => String(c.id)));
+                            }
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 transition-colors"
+                        >
+                          {packedItemIds.length === capsuleItems.length ? 'Desmarcar todo' : '✓ Marcar todas'}
+                        </button>
+                      </div>
                     </div>
 
                     {/* Barra de progreso de empacado */}
@@ -4318,6 +4641,73 @@ export default function App() {
                   {selectedFilter === 'UNWORN' ? 'Ver todo ✕' : 'Filtrar 0 usos →'}
                 </p>
               </button>
+            </div>
+          )}
+
+          {/* Detector de Huecos en el Armario Cápsula (Wardrobe Gaps) */}
+          {garments.length > 0 && (
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-2xs space-y-2.5">
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setShowWardrobeGaps(!showWardrobeGaps)}
+                  className="flex items-center gap-2 text-left w-full justify-between focus:outline-none"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                      <Sparkles className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-extrabold text-slate-900">
+                        {wardrobeGaps.length === 0
+                          ? '✨ Armario Cápsula Equilibrado'
+                          : `💡 ${wardrobeGaps.length} Hueco${wardrobeGaps.length > 1 ? 's' : ''} detectado${wardrobeGaps.length > 1 ? 's' : ''} en tu armario`}
+                      </span>
+                      <p className="text-[10px] text-slate-500">
+                        {wardrobeGaps.length === 0
+                          ? 'Excelente cobertura en ocasiones, proporciones y clima.'
+                          : 'Piezas clave para multiplicar la versatilidad de tus prendas.'}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-full shrink-0 transition-colors">
+                    {showWardrobeGaps ? 'Ocultar' : 'Ver análisis'}
+                  </span>
+                </button>
+              </div>
+
+              {showWardrobeGaps && (
+                <div className="pt-2 border-t border-slate-100 space-y-2 animate-in fade-in duration-150">
+                  {wardrobeGaps.length === 0 ? (
+                    <div className="p-3 bg-emerald-50/70 rounded-xl border border-emerald-100 text-xs text-emerald-900 leading-relaxed">
+                      🎉 ¡Enhorabuena! Tu armario tiene un balance óptimo de prendas superiores, inferiores, calzado formal, deportivo y abrigo.
+                    </div>
+                  ) : (
+                    wardrobeGaps.map(gap => (
+                      <div
+                        key={gap.id}
+                        className="p-3 bg-[#FAF9F6] rounded-xl border border-slate-200/80 text-xs space-y-1"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-extrabold text-slate-900">{gap.title}</span>
+                          <span className="text-[10px] font-bold text-indigo-600 bg-indigo-100/70 px-2 py-0.5 rounded-full">
+                            {gap.tag}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-600 leading-relaxed">{gap.desc}</p>
+                        {currentUser && (currentUser.weightKg || currentUser.gender) && (
+                          <p className="text-[10px] text-slate-400 font-medium pt-0.5">
+                            Recomendación para perfil: {currentUser.gender === 'mujer' ? 'Mujer' : 'Hombre'}
+                            {estimateRecommendedSize(currentUser.weightKg, currentUser.heightCm, currentUser.gender)
+                              ? ` • Talla sugerida: ${estimateRecommendedSize(currentUser.weightKg, currentUser.heightCm, currentUser.gender)}`
+                              : ''}
+                          </p>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -4538,6 +4928,14 @@ export default function App() {
                               step="1"
                               placeholder="Precio €"
                               value={editingPriceVal}
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  saveGarmentPrice(g.id, editingPriceVal);
+                                } else if (e.key === 'Escape') {
+                                  setEditingPriceId(null);
+                                }
+                              }}
                               onChange={(e) => setEditingPriceVal(e.target.value)}
                               className="w-full bg-[#FAF9F6] border border-slate-300 rounded-lg px-2 py-1 text-[11px] text-slate-900 focus:outline-none focus:border-slate-900"
                             />
@@ -4547,6 +4945,14 @@ export default function App() {
                               className="px-2 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-bold shrink-0"
                             >
                               OK
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingPriceId(null)}
+                              className="px-1.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 text-[10px] font-bold shrink-0"
+                              title="Cancelar"
+                            >
+                              ✕
                             </button>
                           </div>
                         ) : (
@@ -4712,6 +5118,92 @@ export default function App() {
             </div>
           )}
         </main>
+      )}
+
+      {/* =====================================================================
+          MODAL DE RESCATE ASISTIDO DE PRENDAS DE LA COLADA
+      ====================================================================== */}
+      {laundryRescueData && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl border border-slate-200/80 space-y-4">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                  <WashingMachine className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-extrabold text-slate-900">Prendas en la colada</h4>
+                  <p className="text-[11px] text-slate-500">
+                    Falta: {laundryRescueData.missingSlots.map(m => m.name).join(', ')} limpia
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLaundryRescueData(null)}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Para generar este look necesitas al menos una prenda limpia de esa categoría. Puedes rescatar una de tu cesto de colada ahora mismo:
+            </p>
+
+            <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+              {laundryRescueData.dirtyRescuables.map(item => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between gap-2.5 p-2.5 bg-[#FAF9F6] border border-slate-200/80 rounded-2xl"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="w-11 h-11 rounded-xl object-cover bg-slate-100 shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-slate-900 truncate">{item.name}</p>
+                      <p className="text-[10px] text-slate-500 truncate">{item.color}</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      rescueGarmentFromLaundry(item.id);
+                      setLaundryRescueData(null);
+                      generateOutfit();
+                    }}
+                    className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded-xl shrink-0 flex items-center gap-1 shadow-xs transition-colors"
+                  >
+                    <Check className="w-3.5 h-3.5" /> Marcar limpia y generar
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setLaundryRescueData(null);
+                  setActiveTab('laundry');
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors"
+              >
+                Ir a Mi Colada
+              </button>
+              <button
+                type="button"
+                onClick={() => setLaundryRescueData(null)}
+                className="py-2.5 px-3 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 transition-colors"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* =====================================================================
