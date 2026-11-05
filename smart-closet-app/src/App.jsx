@@ -150,6 +150,8 @@ const INITIAL_GARMENTS = [
     warmth: 3,
     comfort: 3,
     color: 'Negro',
+    price: 89,
+    wearCount: 6,
     inLaundry: false,
     image: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=400&auto=format&fit=crop&q=80'
   },
@@ -162,6 +164,8 @@ const INITIAL_GARMENTS = [
     warmth: 1,
     comfort: 5,
     color: 'Blanco',
+    price: 22,
+    wearCount: 14,
     inLaundry: false,
     image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=400&auto=format&fit=crop&q=80'
   },
@@ -174,6 +178,8 @@ const INITIAL_GARMENTS = [
     warmth: 2,
     comfort: 4,
     color: 'Beige',
+    price: 49,
+    wearCount: 8,
     inLaundry: false,
     image: 'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=400&auto=format&fit=crop&q=80'
   },
@@ -186,6 +192,8 @@ const INITIAL_GARMENTS = [
     warmth: 2,
     comfort: 5,
     color: 'Blanco',
+    price: 79,
+    wearCount: 18,
     inLaundry: false,
     image: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=400&auto=format&fit=crop&q=80'
   },
@@ -198,6 +206,8 @@ const INITIAL_GARMENTS = [
     warmth: 4,
     comfort: 4,
     color: 'Azul Marino',
+    price: 69,
+    wearCount: 4,
     inLaundry: false,
     image: 'https://images.unsplash.com/photo-1544441893-675973e31985?w=400&auto=format&fit=crop&q=80'
   },
@@ -210,6 +220,8 @@ const INITIAL_GARMENTS = [
     warmth: 4,
     comfort: 5,
     color: 'Gris',
+    price: 45,
+    wearCount: 5,
     inLaundry: false,
     image: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=400&auto=format&fit=crop&q=80'
   },
@@ -222,6 +234,8 @@ const INITIAL_GARMENTS = [
     warmth: 4,
     comfort: 4,
     color: 'Burdeos',
+    price: 55,
+    wearCount: 0,
     inLaundry: false,
     image: 'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=400&auto=format&fit=crop&q=80'
   }
@@ -276,6 +290,9 @@ export default function App() {
   const [garments, setGarments] = useState([]);
   const [selectedFilter, setSelectedFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [seasonFilterActive, setSeasonFilterActive] = useState(false);
+  const [editingPriceId, setEditingPriceId] = useState(null);
+  const [editingPriceVal, setEditingPriceVal] = useState('');
 
   // --- Calendario / Planificador Semanal ---
   const [weeklyPlan, setWeeklyPlan] = useState({});
@@ -285,9 +302,10 @@ export default function App() {
     return map[dayIndex] || 'Lun';
   });
 
-  // --- Autodetección IA de Prendas por Foto ---
+  // --- Autodetección IA de Prendas por Foto y Modo Estudio ---
   const [analyzingPhoto, setAnalyzingPhoto] = useState(false);
   const [aiVisionBadge, setAiVisionBadge] = useState('');
+  const [studioCutoutMode, setStudioCutoutMode] = useState(true);
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const [geminiApiKey, setGeminiApiKey] = useState(() => {
     try {
@@ -297,12 +315,16 @@ export default function App() {
     }
   });
 
-  // --- Prenda Ancla ("Pin & Build Outfit") y Maleta de Viaje (Cápsula IA) ---
+  // --- Prenda Ancla ("Pin & Build Outfit"), Briefing Matutino y Maleta de Viaje (Pestaña "Viaje") ---
   const [lockedGarment, setLockedGarment] = useState(null);
-  const [showCapsuleBuilder, setShowCapsuleBuilder] = useState(false);
+  const [morningBriefingMsg, setMorningBriefingMsg] = useState('');
+  const morningLoadedUserRef = useRef('');
+  const [tripName, setTripName] = useState('');
   const [tripDays, setTripDays] = useState(3);
   const [tripOccasion, setTripOccasion] = useState('Going Out');
+  const [tripWarmth, setTripWarmth] = useState(3);
   const [capsuleItems, setCapsuleItems] = useState([]);
+  const [packedItemIds, setPackedItemIds] = useState([]);
 
   // --- Historial de Feedback del Usuario ---
   const [feedbackHistory, setFeedbackHistory] = useState([]);
@@ -478,6 +500,7 @@ export default function App() {
     warmth: 3,
     comfort: 4,
     color: 'Negro',
+    price: '',
     image: ''
   });
 
@@ -492,9 +515,16 @@ export default function App() {
         setLocationName(name);
         
         const t = data.current_weather.temperature;
-        if (t < 13) setDesiredWarmth(5);
-        else if (t < 21) setDesiredWarmth(3);
-        else setDesiredWarmth(1);
+        if (t < 13) {
+          setDesiredWarmth(5);
+          setTripWarmth(5);
+        } else if (t < 21) {
+          setDesiredWarmth(3);
+          setTripWarmth(3);
+        } else {
+          setDesiredWarmth(1);
+          setTripWarmth(1);
+        }
       }
     } catch (e) {
       console.error("Error al obtener clima:", e);
@@ -1032,6 +1062,52 @@ export default function App() {
     }
   };
 
+  // Mejora 3: Encuadre y Fondo Limpio de Estudio en <canvas> (sin servidores externos)
+  const applyStudioCutoutToCanvas = (ctx, width, height) => {
+    // 1. Halo / viñeta suave de estudio (#f8fafc) en los bordes para limpiar fondos desordenados (camas, puertas, suelo)
+    const cx = width / 2;
+    const cy = height / 2;
+    const innerRadius = Math.min(width, height) * 0.34;
+    const outerRadius = Math.max(width, height) * 0.62;
+    const grad = ctx.createRadialGradient(cx, cy, innerRadius, cx, cy, outerRadius);
+    grad.addColorStop(0, 'rgba(248, 250, 252, 0)');
+    grad.addColorStop(0.7, 'rgba(248, 250, 252, 0.35)');
+    grad.addColorStop(1, 'rgba(248, 250, 252, 0.94)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, width, height);
+
+    // 2. Marco editorial limpio de catálogo
+    ctx.strokeStyle = '#f1f5f9';
+    ctx.lineWidth = Math.max(6, Math.round(Math.min(width, height) * 0.025));
+    ctx.strokeRect(0, 0, width, height);
+  };
+
+  const applyStudioToExistingPhoto = () => {
+    if (!newGarment.image) return;
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const width = img.width || 500;
+      const height = img.height || 500;
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(0, 0, width, height);
+      ctx.filter = 'contrast(1.06) saturate(1.05) brightness(1.03)';
+      // Encuadre centrado al 92% para centrar la prenda
+      const padX = Math.round(width * 0.04);
+      const padY = Math.round(height * 0.04);
+      ctx.drawImage(img, padX, padY, width - padX * 2, height - padY * 2);
+      ctx.filter = 'none';
+      applyStudioCutoutToCanvas(ctx, width, height);
+      const studioDataUrl = canvas.toDataURL('image/jpeg', 0.84);
+      setNewGarment(prev => ({ ...prev, image: studioDataUrl }));
+      showToast('✨ Encuadre y fondo limpio de estudio aplicado');
+    };
+    img.src = newGarment.image;
+  };
+
   const capturePhotoFromVideo = () => {
     if (!videoRef.current) return;
     const video = videoRef.current;
@@ -1052,7 +1128,14 @@ export default function App() {
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext('2d');
+    if (studioCutoutMode) {
+      ctx.filter = 'contrast(1.05) saturate(1.04) brightness(1.02)';
+    }
     ctx.drawImage(video, 0, 0, width, height);
+    ctx.filter = 'none';
+    if (studioCutoutMode) {
+      applyStudioCutoutToCanvas(ctx, width, height);
+    }
     const dataUrl = canvas.toDataURL('image/jpeg', jpegQuality);
     setNewGarment(prev => ({ ...prev, image: dataUrl }));
     stopCamera();
@@ -1084,7 +1167,14 @@ export default function App() {
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d');
+        if (studioCutoutMode) {
+          ctx.filter = 'contrast(1.05) saturate(1.04) brightness(1.02)';
+        }
         ctx.drawImage(img, 0, 0, width, height);
+        ctx.filter = 'none';
+        if (studioCutoutMode) {
+          applyStudioCutoutToCanvas(ctx, width, height);
+        }
         const compressedDataUrl = canvas.toDataURL('image/jpeg', jpegQuality);
         setNewGarment(prev => ({ ...prev, image: compressedDataUrl }));
         stopCamera();
@@ -1115,6 +1205,7 @@ export default function App() {
 
     const typeObj = GARMENT_TYPES.find(t => t.id === newGarment.subcategory) || GARMENT_TYPES[0];
     const autoName = `${typeObj.singular} ${newGarment.color || ''}`.trim();
+    const numericPrice = newGarment.price !== '' && Number(newGarment.price) > 0 ? Number(newGarment.price) : undefined;
 
     const created = {
       id: Date.now().toString(),
@@ -1125,6 +1216,7 @@ export default function App() {
       warmth: Number(newGarment.warmth),
       comfort: 4,
       color: newGarment.color.trim() || 'Negro',
+      price: numericPrice,
       inLaundry: false,
       wearCount: 0,
       image: newGarment.image
@@ -1139,6 +1231,7 @@ export default function App() {
       warmth: 3,
       comfort: 4,
       color: 'Negro',
+      price: '',
       image: ''
     });
 
@@ -1149,6 +1242,20 @@ export default function App() {
       setShowAddModal(false);
       showToast(`"${created.name}" añadida a tu armario`);
     }
+  };
+
+  // Guardar o actualizar el precio (€) de una prenda para calcular su Coste por Uso (CPW)
+  const saveGarmentPrice = (id, priceVal) => {
+    const num = Number(priceVal);
+    const updated = garments.map(g =>
+      String(g.id) === String(id)
+        ? { ...g, price: num > 0 ? num : undefined }
+        : g
+    );
+    updateUserGarments(updated);
+    setEditingPriceId(null);
+    setEditingPriceVal('');
+    showToast(num > 0 ? `💶 Precio actualizado (${num} €)` : 'Precio eliminado');
   };
 
   // Eliminar prenda del armario
@@ -1177,7 +1284,367 @@ export default function App() {
     showToast(`Clasificación actualizada a ${newSubcat}`);
   };
 
-  // Cambiar solo una prenda individual dentro del outfit sugerido
+  // ============================================================================
+  // MOTOR DE ARMONÍA CROMÁTICA Y COHERENCIA ESTILÍSTICA (IA ESTILISTA)
+  // ============================================================================
+  const evaluateColorHarmony = (items = []) => {
+    const normalizeColor = (c = '') => String(c).trim().toLowerCase();
+    const colors = items.map(it => normalizeColor(it?.color)).filter(Boolean);
+    if (colors.length < 2) return { score: 0, label: 'Neutra' };
+
+    const neutrals = new Set(['negro', 'blanco', 'gris', 'beige']);
+    const classicBase = new Set(['azul marino', 'marrón']);
+    const vividAccents = new Set(['rojo', 'rosa', 'amarillo', 'verde', 'azul', 'burdeos']);
+
+    let score = 0;
+    let harmonyReason = '';
+
+    const topColor = normalizeColor(items[0]?.color);
+    const bottomColor = normalizeColor(items[1]?.color);
+    const shoeColor = normalizeColor(items[2]?.color);
+    const outerColor = items[3] ? normalizeColor(items[3]?.color) : null;
+
+    const hasPair = (c1, c2, a, b) => (c1 === a && c2 === b) || (c1 === b && c2 === a);
+
+    // 1. Choques cromáticos estridentes (Penalizaciones)
+    const checkClash = (c1, c2) => {
+      if (!c1 || !c2) return 0;
+      if (hasPair(c1, c2, 'rojo', 'rosa')) return -18;
+      if (hasPair(c1, c2, 'rojo', 'verde')) return -16;
+      if (hasPair(c1, c2, 'amarillo', 'rosa')) return -14;
+      if (hasPair(c1, c2, 'burdeos', 'rojo')) return -10;
+      if (hasPair(c1, c2, 'azul marino', 'negro')) return -6;
+      return 0;
+    };
+
+    const topBottomClash = checkClash(topColor, bottomColor);
+    if (topBottomClash < 0) {
+      score += topBottomClash;
+      harmonyReason = 'Contraste cromático arriesgado';
+    }
+    if (outerColor) {
+      score += Math.round(checkClash(outerColor, topColor) * 0.7);
+      score += Math.round(checkClash(outerColor, bottomColor) * 0.7);
+    }
+
+    // Marrón oscuro chocando con Negro puro sin puente neutro (blanco/beige/gris)
+    const hasBrownAndBlack = colors.includes('marrón') && colors.includes('negro');
+    const hasLightBridge = colors.includes('blanco') || colors.includes('beige') || colors.includes('gris');
+    if (hasBrownAndBlack && !hasLightBridge) {
+      score -= 12;
+    }
+
+    // Penalizar exceso de colores muy saturados no neutros (> 2 tonos vivos distintos)
+    const uniqueVivids = new Set(colors.filter(c => vividAccents.has(c)));
+    if (uniqueVivids.size > 2) {
+      score -= (uniqueVivids.size - 2) * 14;
+    }
+
+    // 2. Combinaciones clásicas y armónicas (Bonificaciones)
+    if (
+      hasPair(topColor, bottomColor, 'azul marino', 'beige') ||
+      hasPair(topColor, bottomColor, 'azul marino', 'blanco')
+    ) {
+      score += 14;
+      harmonyReason = 'armonía clásica Azul Marino y neutro luminoso';
+    } else if (
+      hasPair(topColor, bottomColor, 'burdeos', 'gris') ||
+      hasPair(topColor, bottomColor, 'burdeos', 'beige') ||
+      hasPair(topColor, bottomColor, 'burdeos', 'negro')
+    ) {
+      score += 13;
+      harmonyReason = 'sofisticación cromática en Burdeos y neutro';
+    } else if (
+      hasPair(topColor, bottomColor, 'marrón', 'beige') ||
+      hasPair(topColor, bottomColor, 'marrón', 'blanco') ||
+      hasPair(topColor, bottomColor, 'verde', 'beige')
+    ) {
+      score += 12;
+      harmonyReason = 'paleta tierra orgánica y equilibrada';
+    } else if (
+      hasPair(topColor, bottomColor, 'negro', 'blanco') ||
+      hasPair(topColor, bottomColor, 'negro', 'beige') ||
+      hasPair(topColor, bottomColor, 'gris', 'blanco')
+    ) {
+      score += 11;
+      harmonyReason = 'contraste minimalista de alta versatilidad';
+    } else if (
+      (neutrals.has(topColor) && vividAccents.has(bottomColor)) ||
+      (vividAccents.has(topColor) && (neutrals.has(bottomColor) || classicBase.has(bottomColor)))
+    ) {
+      score += 10;
+      harmonyReason = 'base neutra con acento de color equilibrado';
+    } else if (topColor === bottomColor && neutrals.has(topColor)) {
+      score += 8;
+      harmonyReason = 'estética monocromática limpia';
+    } else if (topColor === bottomColor && vividAccents.has(topColor)) {
+      score -= 8; // Monocromo saturado sin variación de luminosidad
+    }
+
+    // 3. Coherencia de Calzado y Prenda Exterior (Sandwich Rule / Continuidad)
+    if (shoeColor) {
+      if (neutrals.has(shoeColor) || shoeColor === 'marrón' || shoeColor === 'azul marino') {
+        score += 4;
+      }
+      if (shoeColor === topColor || (outerColor && shoeColor === outerColor)) {
+        score += 5; // Regla del sándwich cromático
+        if (!harmonyReason) harmonyReason = 'equilibrio visual entre calzado y parte superior';
+      }
+    }
+
+    if (outerColor) {
+      if (neutrals.has(outerColor) || classicBase.has(outerColor)) {
+        score += 6;
+      } else if (uniqueVivids.size <= 1) {
+        score += 4;
+      }
+    }
+
+    return {
+      score,
+      label: harmonyReason || 'paleta cromática equilibrada'
+    };
+  };
+
+  const evaluateStyleCoherence = (items = [], occasion = 'Work') => {
+    let score = 0;
+    let styleReason = '';
+
+    const subcats = items.map(it => it?.subcategory || getDefaultSubcategory(it?.category));
+    const hasSubcat = (s) => subcats.includes(s);
+
+    // Niveles de formalidad por subcategoría (1: Deportivo/Relax, 2: Casual, 3: Smart/Formal)
+    const formalityMap = {
+      Sudaderas: 1,
+      FaldasShorts: 1.5,
+      Camisetas: 2,
+      Vaqueros: 2.2,
+      Calzado: 2.2,
+      Jerseys: 2.6,
+      Pantalones: 2.8,
+      Abrigos: 2.8,
+      Camisas: 3,
+      Blazers: 3.2
+    };
+
+    const formalities = subcats.map(s => formalityMap[s] || 2);
+    const maxFormality = Math.max(...formalities);
+    const minFormality = Math.min(...formalities);
+
+    // Evitar choques extremos de formalidad (ej. Blazer con Sudadera o Bermudas deportivas)
+    if (hasSubcat('Blazers') && hasSubcat('Sudaderas')) {
+      score -= 16;
+    }
+    if (hasSubcat('Blazers') && hasSubcat('FaldasShorts') && occasion === 'Work') {
+      score -= 22;
+    }
+    if (hasSubcat('Camisas') && hasSubcat('FaldasShorts') && occasion === 'Work') {
+      score -= 14;
+    }
+    if (maxFormality - minFormality > 1.8) {
+      score -= 10;
+    }
+
+    // Reglas y sinergias según la ocasión
+    if (occasion === 'Work') {
+      if (hasSubcat('Sudaderas')) score -= 18;
+      if (hasSubcat('FaldasShorts')) score -= 14;
+      if (hasSubcat('Blazers') && (hasSubcat('Camisas') || hasSubcat('Jerseys')) && (hasSubcat('Pantalones') || hasSubcat('Vaqueros'))) {
+        score += 18;
+        styleReason = 'sastrería smart-casual impecable para trabajo';
+      } else if ((hasSubcat('Camisas') || hasSubcat('Jerseys')) && hasSubcat('Pantalones')) {
+        score += 14;
+        styleReason = 'línea profesional y cómoda';
+      } else if (hasSubcat('Camisetas') && hasSubcat('Blazers') && hasSubcat('Pantalones')) {
+        score += 11;
+        styleReason = 'registro ejecutivo moderno con blazer';
+      }
+    } else if (occasion === 'Sport') {
+      if (hasSubcat('Blazers')) score -= 35;
+      if (hasSubcat('Camisas')) score -= 28;
+      if (hasSubcat('Jerseys')) score -= 15;
+      if (hasSubcat('Camisetas') || hasSubcat('Sudaderas')) {
+        score += 15;
+        styleReason = 'máxima libertad de movimiento deportivo';
+      }
+    } else if (occasion === 'Going Out') {
+      if ((hasSubcat('Vaqueros') || hasSubcat('Pantalones')) && (hasSubcat('Camisas') || hasSubcat('Jerseys') || hasSubcat('Camisetas'))) {
+        score += 12;
+        styleReason = 'versatilidad casual urbana';
+      }
+      if (hasSubcat('Blazers') && hasSubcat('Vaqueros')) {
+        score += 15;
+        styleReason = 'contraste elevado blazer & denim';
+      }
+    }
+
+    // Adecuación explícita de las prendas a la ocasión seleccionada
+    items.forEach(it => {
+      if (it?.occasion?.includes(occasion)) score += 4;
+      else score -= 5;
+    });
+
+    return {
+      score,
+      label: styleReason || (occasion === 'Work' ? 'corte formal equilibrado' : occasion === 'Sport' ? 'funcionalidad activa' : 'estilo casual relajado')
+    };
+  };
+
+  const calculateRefinedWarmthBias = (baseWarmth, history = []) => {
+    let bias = 0;
+    // Ponderar con mayor peso los feedbacks más recientes (los primeros del array)
+    history.slice(0, 12).forEach((fb, idx) => {
+      const recencyWeight = Math.max(0.35, 1 - idx * 0.07);
+      if (fb.reasons?.includes('too_cold')) bias += 0.65 * recencyWeight;
+      if (fb.reasons?.includes('too_warm')) bias -= 0.65 * recencyWeight;
+    });
+    const clampedBias = Math.max(-2, Math.min(2, bias));
+    return Math.min(5, Math.max(1, Math.round(baseWarmth + clampedBias)));
+  };
+
+  const scoreOutfitCandidate = ({
+    candidateItems,
+    occasion,
+    targetWarmth,
+    avgClosetWear,
+    excludedIds = new Set(),
+    todayStr
+  }) => {
+    const candidateTop = candidateItems[0];
+    const candidateBottom = candidateItems[1];
+    const candidateIds = candidateItems.map(item => String(item.id)).sort().join('-');
+    const topBottomKey = `${candidateTop.id}_${candidateBottom.id}`;
+    const colorPairKey = `${candidateTop.color?.toLowerCase()}_${candidateBottom.color?.toLowerCase()}`;
+
+    let score = 0;
+    const rejectedFeedbacks = feedbackHistory.filter(f => f.status === 'rejected');
+
+    // 1. Penalización por rechazos directos o combinaciones cromáticas rechazadas
+    if (rejectedFeedbacks.some(fb => fb.comboKey === candidateIds)) score -= 60;
+    if (
+      rejectedFeedbacks.some(
+        fb =>
+          fb.topBottomKey === topBottomKey ||
+          (fb.reasons?.includes('colors') && fb.colorPairKey === colorPairKey)
+      )
+    ) {
+      score -= 30;
+    }
+
+    // 2. Aprendizaje por refuerzo positivo (8-10 ⭐) y penalización gradual (0-4 ⭐)
+    feedbackHistory.forEach((fb, idx) => {
+      const recency = Math.max(0.5, 1 - idx * 0.04);
+      const isExactCombo = fb.comboKey === candidateIds;
+      const isSamePair = fb.topBottomKey === topBottomKey;
+      const isSameColorPair = fb.colorPairKey === colorPairKey;
+
+      if (typeof fb.rating === 'number') {
+        if (isExactCombo || isSamePair) {
+          if (fb.rating >= 8) {
+            score += (fb.rating - 6) * 5.5 * recency;
+          } else if (fb.rating <= 4) {
+            score -= (5 - fb.rating) * 6 * recency;
+          } else {
+            score += (fb.rating - 5) * 3 * recency;
+          }
+        } else if (isSameColorPair) {
+          if (fb.rating >= 8 && fb.status === 'accepted') {
+            score += 7 * recency;
+          } else if (fb.rating <= 4 || fb.reasons?.includes('colors')) {
+            score -= 9 * recency;
+          }
+        }
+      } else if (fb.status === 'accepted' && (isExactCombo || isSamePair)) {
+        score += 10 * recency;
+      }
+
+      if (fb.reasons?.includes('wrong_style') && fb.occasion === occasion && isSamePair) {
+        score -= 18 * recency;
+      }
+    });
+
+    // 3. Armonía Cromática y Coherencia Estilística
+    const colorEval = evaluateColorHarmony(candidateItems);
+    const styleEval = evaluateStyleCoherence(candidateItems, occasion);
+    score += colorEval.score;
+    score += styleEval.score;
+
+    // 4. Rotación Anti-Olvido y penalización de prendas repetidas el mismo día
+    let unwornBoostCount = 0;
+    candidateItems.forEach(it => {
+      const wears = Number(it.wearCount) || 0;
+      if (wears === 0) {
+        score += 9;
+        unwornBoostCount++;
+      } else if (wears < avgClosetWear) {
+        score += 4.5;
+      }
+      if (todayStr && it.lastWornAt === todayStr) {
+        score -= 16; // Evitar sugerir prendas ya usadas hoy si hay alternativas
+      }
+      if (excludedIds.has(String(it.id))) {
+        score -= 14; // Evitar repetición consecutiva
+      }
+    });
+
+    // 5. Equilibrio térmico
+    const avgWarmth =
+      candidateItems.reduce((acc, it) => acc + (Number(it.warmth) || 3), 0) /
+      candidateItems.length;
+    const warmthDiff = Math.abs(avgWarmth - targetWarmth);
+    score -= warmthDiff * 5;
+
+    // Calcular % de afinidad (Match %) normalizado entre 68% y 99%
+    const affinityPct = Math.max(68, Math.min(99, Math.round(78 + score * 0.45)));
+
+    return {
+      score,
+      affinityPct,
+      colorEval,
+      styleEval,
+      unwornBoostCount,
+      avgWarmth
+    };
+  };
+
+  const buildStylistEditorialNote = ({
+    items,
+    evalResult,
+    activeAnchor,
+    targetWarmth,
+    isRainingNow,
+    historyCount
+  }) => {
+    const topItem = items[0];
+    const bottomItem = items[1];
+    const outerItem = items[3];
+    const parts = [];
+
+    parts.push(`✨ Afinidad ${evalResult.affinityPct}%: ${topItem.name} con ${bottomItem.name}${outerItem ? ` y ${outerItem.name}` : ''}.`);
+    parts.push(`Destaca por su ${evalResult.colorEval.label} y ${evalResult.styleEval.label}.`);
+
+    if (activeAnchor) {
+      parts.push(`Construido alrededor de tu prenda ancla "${activeAnchor.name}".`);
+    } else if (evalResult.unwornBoostCount > 0) {
+      parts.push(`Activa la rotación de tu armario rescatando prendas con pocos usos.`);
+    }
+
+    if (isRainingNow) {
+      parts.push(`Incluye capa exterior para lluvia (${temp}°C).`);
+    } else if (targetWarmth >= 4) {
+      parts.push(`Aislamiento térmico óptimo para ${temp}°C.`);
+    } else if (targetWarmth <= 2) {
+      parts.push(`Tejidos ligeros ideales para ${temp}°C.`);
+    }
+
+    if (historyCount > 0) {
+      parts.push(`Calibrado con tus ${historyCount} valoraciones ⭐.`);
+    }
+
+    return parts.join(' ');
+  };
+
+  // Cambiar solo una prenda individual dentro del outfit sugerido priorizando armonía cromática y estilo
   const swapSingleOutfitItem = (slotToSwap, currentItemId) => {
     if (!currentOutfit) return;
     const pool = garments.filter(
@@ -1190,11 +1657,48 @@ export default function App() {
       showToast('No tienes otra prenda limpia de este tipo para cambiar.');
       return;
     }
-    const replacement = pool[Math.floor(Math.random() * pool.length)];
-    const updatedOutfit = currentOutfit.map(item =>
-      String(item.id) === String(currentItemId) ? replacement : item
+
+    const cleanGarments = garments.filter(g => !g.inLaundry);
+    const avgClosetWear =
+      cleanGarments.reduce((acc, g) => acc + (Number(g.wearCount) || 0), 0) /
+      Math.max(1, cleanGarments.length);
+    const targetWarmth = calculateRefinedWarmthBias(desiredWarmth, feedbackHistory);
+    const todayStr = new Date().toLocaleDateString('es-ES');
+
+    const scoredCandidates = pool.map(candidateReplacement => {
+      const simulatedOutfit = currentOutfit.map(item =>
+        String(item.id) === String(currentItemId) ? candidateReplacement : item
+      );
+      const evalRes = scoreOutfitCandidate({
+        candidateItems: simulatedOutfit,
+        occasion: selectedOccasion,
+        targetWarmth,
+        avgClosetWear,
+        todayStr
+      });
+      return {
+        replacement: candidateReplacement,
+        simulatedOutfit,
+        evalRes
+      };
+    });
+
+    scoredCandidates.sort((a, b) => b.evalRes.score - a.evalRes.score);
+    // Elegir entre las 2 mejores alternativas para mantener alta armonía sin bloquear variedad
+    const topSlice = scoredCandidates.slice(0, Math.min(2, scoredCandidates.length));
+    const chosen = topSlice[Math.floor(Math.random() * topSlice.length)];
+
+    setCurrentOutfit(chosen.simulatedOutfit);
+    setAiNote(
+      buildStylistEditorialNote({
+        items: chosen.simulatedOutfit,
+        evalResult: chosen.evalRes,
+        activeAnchor: lockedGarment,
+        targetWarmth,
+        isRainingNow: isRaining,
+        historyCount: feedbackHistory.length
+      })
     );
-    setCurrentOutfit(updatedOutfit);
   };
 
   // --- Fijar Prenda Ancla ("Pin & Build Outfit") desde Mi Armario ---
@@ -1240,23 +1744,20 @@ export default function App() {
         return;
       }
 
-      const rejectedFeedbacks = feedbackHistory.filter(f => f.status === 'rejected');
-
-      let warmthBias = 0;
-      rejectedFeedbacks.forEach(fb => {
-        if (fb.reasons?.includes('too_cold')) warmthBias += 0.5;
-        if (fb.reasons?.includes('too_warm')) warmthBias -= 0.5;
-      });
-      const targetWarmth = Math.min(5, Math.max(1, Math.round(desiredWarmth + warmthBias)));
-
+      const targetWarmth = calculateRefinedWarmthBias(desiredWarmth, feedbackHistory);
       const avgClosetWear =
         cleanGarments.reduce((acc, g) => acc + (Number(g.wearCount) || 0), 0) /
         Math.max(1, cleanGarments.length);
+      const todayStr = new Date().toLocaleDateString('es-ES');
+      const currentIdsSet = new Set(currentOutfit ? currentOutfit.map(i => String(i.id)) : []);
 
       let bestCandidate = null;
+      let bestEval = null;
       let bestScore = -9999;
 
-      for (let i = 0; i < 28; i++) {
+      const iterations = Math.min(48, Math.max(28, tops.length * bottoms.length * 2));
+
+      for (let i = 0; i < iterations; i++) {
         const candidateTop = tops[Math.floor(Math.random() * tops.length)];
         const candidateBottom = bottoms[Math.floor(Math.random() * bottoms.length)];
         const candidateFootwear = footwears[Math.floor(Math.random() * footwears.length)];
@@ -1277,67 +1778,45 @@ export default function App() {
         if (candidateOuterwear) candidateItems.push(candidateOuterwear);
 
         const candidateIds = candidateItems.map(item => String(item.id)).sort().join('-');
-        const colorPairKey = `${candidateTop.color?.toLowerCase()}_${candidateBottom.color?.toLowerCase()}`;
 
-        let score = 0;
-
-        const exactRejected = rejectedFeedbacks.some(fb => fb.comboKey === candidateIds);
-        if (exactRejected) score -= 50;
-
-        const pairRejected = rejectedFeedbacks.some(
-          fb =>
-            fb.topBottomKey === `${candidateTop.id}_${candidateBottom.id}` ||
-            (fb.reasons?.includes('colors') && fb.colorPairKey === colorPairKey)
-        );
-        if (pairRejected) score -= 25;
-
-        const previousRatings = feedbackHistory.filter(
-          fb => fb.comboKey === candidateIds || fb.topBottomKey === `${candidateTop.id}_${candidateBottom.id}`
-        );
-        previousRatings.forEach(fb => {
-          if (typeof fb.rating === 'number') {
-            score += (fb.rating - 5) * 4;
-          } else if (fb.status === 'accepted') {
-            score += 10;
-          }
+        const evalRes = scoreOutfitCandidate({
+          candidateItems,
+          occasion: selectedOccasion,
+          targetWarmth,
+          avgClosetWear,
+          excludedIds: currentIdsSet,
+          todayStr
         });
 
-        // Bonus de rotación anti-olvido para dar salida a prendas con 0 o pocos usos
-        candidateItems.forEach(it => {
-          const wears = Number(it.wearCount) || 0;
-          if (wears === 0) score += 8;
-          else if (wears < avgClosetWear) score += 4;
-        });
-
-        const avgWarmth =
-          candidateItems.reduce((acc, it) => acc + (Number(it.warmth) || 3), 0) /
-          candidateItems.length;
-        score -= Math.abs(avgWarmth - targetWarmth) * 4;
+        let score = evalRes.score;
 
         if (currentOutfit) {
           const currentKey = currentOutfit.map(item => String(item.id)).sort().join('-');
-          if (currentKey === candidateIds) score -= 15;
+          if (currentKey === candidateIds) score -= 22;
         }
+
+        // Pequeño jitter estocástico para desempatar candidatos con puntuación idéntica
+        score += Math.random() * 1.5;
 
         if (score > bestScore) {
           bestScore = score;
           bestCandidate = candidateItems;
+          bestEval = evalRes;
         }
       }
 
       setCurrentOutfit(bestCandidate);
       setOutfitRating(8);
 
-      const topItem = bestCandidate[0];
-      const bottomItem = bestCandidate[1];
-      const anchorNote = activeAnchor ? ` Fijando tu "${activeAnchor.name}".` : '';
-      const learnedNote =
-        feedbackHistory.length > 0
-          ? ` Adaptado a tus ${feedbackHistory.length} valoraciones previas.`
-          : '';
-
       setAiNote(
-        `${topItem.name} con ${bottomItem.name}.${anchorNote}${isRaining ? ' Incluye protección para lluvia.' : ''}${learnedNote}`
+        buildStylistEditorialNote({
+          items: bestCandidate,
+          evalResult: bestEval,
+          activeAnchor,
+          targetWarmth,
+          isRainingNow: isRaining,
+          historyCount: feedbackHistory.length
+        })
       );
       setGenerating(false);
     }, 280);
@@ -1462,22 +1941,16 @@ export default function App() {
 
     if (tops.length === 0 || bottoms.length === 0 || footwears.length === 0) return null;
 
-    const rejectedFeedbacks = feedbackHistory.filter(f => f.status === 'rejected');
-    let warmthBias = 0;
-    rejectedFeedbacks.forEach(fb => {
-      if (fb.reasons?.includes('too_cold')) warmthBias += 0.5;
-      if (fb.reasons?.includes('too_warm')) warmthBias -= 0.5;
-    });
-    const targetWarmth = Math.min(5, Math.max(1, Math.round(desiredWarmth + warmthBias)));
-
+    const targetWarmth = calculateRefinedWarmthBias(desiredWarmth, feedbackHistory);
     const avgClosetWear =
       cleanGarments.reduce((acc, g) => acc + (Number(g.wearCount) || 0), 0) /
       Math.max(1, cleanGarments.length);
+    const excludedSet = new Set(excludedTopIds.map(String));
 
     let bestCandidate = null;
     let bestScore = -9999;
 
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 32; i++) {
       const candidateTop = tops[Math.floor(Math.random() * tops.length)];
       const candidateBottom = bottoms[Math.floor(Math.random() * bottoms.length)];
       const candidateFootwear = footwears[Math.floor(Math.random() * footwears.length)];
@@ -1490,36 +1963,15 @@ export default function App() {
       const candidateItems = [candidateTop, candidateBottom, candidateFootwear];
       if (candidateOuterwear) candidateItems.push(candidateOuterwear);
 
-      const candidateIds = candidateItems.map(item => String(item.id)).sort().join('-');
-      const colorPairKey = `${candidateTop.color?.toLowerCase()}_${candidateBottom.color?.toLowerCase()}`;
-
-      let score = 0;
-      if (rejectedFeedbacks.some(fb => fb.comboKey === candidateIds)) score -= 50;
-      if (
-        rejectedFeedbacks.some(
-          fb =>
-            fb.topBottomKey === `${candidateTop.id}_${candidateBottom.id}` ||
-            (fb.reasons?.includes('colors') && fb.colorPairKey === colorPairKey)
-        )
-      ) {
-        score -= 25;
-      }
-
-      feedbackHistory
-        .filter(fb => fb.comboKey === candidateIds || fb.topBottomKey === `${candidateTop.id}_${candidateBottom.id}`)
-        .forEach(fb => {
-          if (typeof fb.rating === 'number') score += (fb.rating - 5) * 4;
-        });
-
-      candidateItems.forEach(it => {
-        const wears = Number(it.wearCount) || 0;
-        if (wears === 0) score += 8;
-        else if (wears < avgClosetWear) score += 4;
+      const evalRes = scoreOutfitCandidate({
+        candidateItems,
+        occasion: occ,
+        targetWarmth,
+        avgClosetWear,
+        excludedIds: excludedSet
       });
 
-      const avgWarmth =
-        candidateItems.reduce((acc, it) => acc + (Number(it.warmth) || 3), 0) / candidateItems.length;
-      score -= Math.abs(avgWarmth - targetWarmth) * 4;
+      const score = evalRes.score + Math.random() * 1.2;
 
       if (score > bestScore) {
         bestScore = score;
@@ -1556,13 +2008,15 @@ export default function App() {
       alert('Necesitas al menos 1 Parte Superior, 1 Parte Inferior y 1 Calzado limpios para planificar.');
       return;
     }
+    const colorHarmony = evaluateColorHarmony(picked);
+    const styleCoh = evaluateStyleCoherence(picked, occ);
     const updated = {
       ...weeklyPlan,
       [dayId]: {
         occasion: occ,
         warmth: desiredWarmth,
         garmentIds: picked.map(g => String(g.id)),
-        note: `${picked[0]?.name} + ${picked[1]?.name}`,
+        note: `${picked[0]?.name} + ${picked[1]?.name} (${colorHarmony.label}, ${styleCoh.label})`,
         completed: false
       }
     };
@@ -1582,11 +2036,12 @@ export default function App() {
         return;
       }
       if (picked[0]) recentTopIds.push(String(picked[0].id));
+      const colorHarmony = evaluateColorHarmony(picked);
       newPlan[day.id] = {
         occasion: occ,
         warmth: desiredWarmth,
         garmentIds: picked.map(g => String(g.id)),
-        note: `${picked[0]?.name} con ${picked[1]?.name}`,
+        note: `${picked[0]?.name} con ${picked[1]?.name} • ${colorHarmony.label}`,
         completed: false
       };
     }
@@ -1626,15 +2081,68 @@ export default function App() {
     showToast('Día liberado del calendario');
   };
 
-  // --- Generador de Maleta de Viaje (Cápsula Inteligente) ---
-  const generateTravelCapsule = (days = tripDays, occ = tripOccasion) => {
+  // --- Mejora 1: Look Matutino Automático ("Morning Briefing") al abrir la app ---
+  useEffect(() => {
+    if (!currentUser?.username || garments.length === 0) return;
+    if (morningLoadedUserRef.current === currentUser.username) return;
+    morningLoadedUserRef.current = currentUser.username;
+
+    const todayMeta = WEEK_DAYS.find(d => d.id === selectedDay);
+    const todayPlan = weeklyPlan[selectedDay];
+
+    if (todayPlan && Array.isArray(todayPlan.garmentIds) && todayPlan.garmentIds.length >= 3) {
+      const plannedGarments = todayPlan.garmentIds
+        .map(id => garments.find(g => String(g.id) === String(id) && !g.inLaundry))
+        .filter(Boolean);
+      if (plannedGarments.length >= 3) {
+        setCurrentOutfit(plannedGarments);
+        setAiNote(todayPlan.note || `Look planificado en tu calendario para el ${todayMeta?.full || selectedDay}.`);
+        setMorningBriefingMsg(
+          `☀️ Buenos días: Tu look planificado para hoy (${todayMeta?.full || selectedDay}) está listo para ${temp}°C en ${locationName}.`
+        );
+        return;
+      }
+    }
+
+    // Si no hay look planificado hoy, generar automáticamente una sugerencia matutina
+    const picked = pickBestOutfitForOccasion(todayMeta?.defaultOccasion || selectedOccasion);
+    if (picked && picked.length >= 3) {
+      const avgClosetWear =
+        garments.reduce((acc, g) => acc + (Number(g.wearCount) || 0), 0) / Math.max(1, garments.length);
+      const evalRes = scoreOutfitCandidate({
+        candidateItems: picked,
+        occasion: todayMeta?.defaultOccasion || selectedOccasion,
+        targetWarmth: desiredWarmth,
+        avgClosetWear
+      });
+      setCurrentOutfit(picked);
+      setAiNote(
+        buildStylistEditorialNote({
+          items: picked,
+          evalResult: evalRes,
+          activeAnchor: null,
+          targetWarmth: desiredWarmth,
+          isRainingNow: isRaining,
+          historyCount: feedbackHistory.length
+        })
+      );
+      setMorningBriefingMsg(
+        `☀️ Buenos días: Hemos preparado tu look automático para hoy (${temp}°C en ${locationName}).`
+      );
+    }
+  }, [currentUser?.username, garments.length]);
+
+  // --- Generador de Maleta de Viaje (Pestaña Dedicada "Viaje") ---
+  const generateTravelCapsule = (days = tripDays, occ = tripOccasion, warmthTarget = tripWarmth) => {
     const clean = garments.filter(g => !g.inLaundry);
     const scoreForTrip = (g) => {
       let s = 0;
-      if (g.occasion?.includes(occ)) s += 15;
-      s -= Math.abs((Number(g.warmth) || 3) - desiredWarmth) * 3;
+      if (g.occasion?.includes(occ)) s += 16;
+      s -= Math.abs((Number(g.warmth) || 3) - warmthTarget) * 3.5;
       const neutralColors = ['negro', 'blanco', 'gris', 'beige', 'azul marino'];
-      if (neutralColors.includes((g.color || '').toLowerCase())) s += 6;
+      if (neutralColors.includes((g.color || '').toLowerCase())) s += 7;
+      // Priorizar prendas versátiles o poco amortizadas
+      if ((Number(g.wearCount) || 0) === 0) s += 3;
       return s;
     };
 
@@ -1643,14 +2151,14 @@ export default function App() {
         .filter(g => getSlotFromType(g.subcategory, g.category) === slot)
         .sort((a, b) => scoreForTrip(b) - scoreForTrip(a));
 
-    const topsNeeded = Math.min(Math.max(2, days), 5);
+    const topsNeeded = Math.min(Math.max(2, days), 6);
     const bottomsNeeded = Math.min(Math.max(1, Math.ceil(days / 2)), 3);
     const shoesNeeded = days >= 4 ? 2 : 1;
 
     const selectedTops = bySlot('Top').slice(0, topsNeeded);
     const selectedBottoms = bySlot('Bottom').slice(0, bottomsNeeded);
     const selectedShoes = bySlot('Footwear').slice(0, shoesNeeded);
-    const selectedOuter = desiredWarmth >= 3 || isRaining ? bySlot('Outerwear').slice(0, 1) : [];
+    const selectedOuter = warmthTarget >= 3 || isRaining ? bySlot('Outerwear').slice(0, days >= 5 ? 2 : 1) : [];
 
     const capsule = [...selectedTops, ...selectedBottoms, ...selectedShoes, ...selectedOuter];
     if (capsule.length < 3) {
@@ -1658,10 +2166,64 @@ export default function App() {
       return;
     }
     setCapsuleItems(capsule);
+    setPackedItemIds([]);
     showToast(`🧳 Maleta cápsula de ${capsule.length} prendas creada para ${days} días`);
   };
 
-  // Prendas filtradas en la vista de Armario (Categoría, Olvidadas 0 usos + Buscador Editorial)
+  const togglePackItem = (id) => {
+    const strId = String(id);
+    setPackedItemIds(prev =>
+      prev.includes(strId) ? prev.filter(item => item !== strId) : [...prev, strId]
+    );
+  };
+
+  const swapCapsuleItem = (itemToSwap) => {
+    const slot = getSlotFromType(itemToSwap.subcategory, itemToSwap.category);
+    const currentCapsuleIds = new Set(capsuleItems.map(c => String(c.id)));
+    const alternatives = garments.filter(
+      g =>
+        !g.inLaundry &&
+        getSlotFromType(g.subcategory, g.category) === slot &&
+        !currentCapsuleIds.has(String(g.id))
+    );
+    if (alternatives.length === 0) {
+      showToast('No tienes otra prenda limpia de este tipo para intercambiar en la maleta.');
+      return;
+    }
+    const replacement = alternatives[Math.floor(Math.random() * alternatives.length)];
+    setCapsuleItems(prev =>
+      prev.map(it => (String(it.id) === String(itemToSwap.id) ? replacement : it))
+    );
+    setPackedItemIds(prev => prev.filter(id => id !== String(itemToSwap.id)));
+    showToast(`🔄 Cambiada por "${replacement.name}"`);
+  };
+
+  const finishTripAndSendToLaundry = () => {
+    const targetIds =
+      packedItemIds.length > 0
+        ? new Set(packedItemIds.map(String))
+        : new Set(capsuleItems.map(c => String(c.id)));
+    if (targetIds.size === 0) return;
+
+    const todayStr = new Date().toLocaleDateString('es-ES');
+    updateUserGarments(
+      garments.map(g =>
+        targetIds.has(String(g.id))
+          ? {
+              ...g,
+              inLaundry: true,
+              wearCount: (Number(g.wearCount) || 0) + 1,
+              lastWornAt: todayStr
+            }
+          : g
+      )
+    );
+    setCapsuleItems([]);
+    setPackedItemIds([]);
+    showToast(`🧺 ¡Buen regreso! ${targetIds.size} prendas del viaje enviadas a colada y usos sumados.`);
+  };
+
+  // Prendas filtradas en la vista de Armario (Categoría, Olvidadas, Modo Temporada + Buscador)
   const filteredGarments = garments.filter(g => {
     const matchesCategory =
       selectedFilter === 'ALL'
@@ -1669,13 +2231,15 @@ export default function App() {
         : selectedFilter === 'UNWORN'
         ? (Number(g.wearCount) || 0) === 0
         : (g.subcategory || getDefaultSubcategory(g.category)) === selectedFilter;
+    const matchesSeason =
+      !seasonFilterActive || Math.abs((Number(g.warmth) || 3) - desiredWarmth) <= 2;
     const q = searchQuery.trim().toLowerCase();
     const matchesSearch =
       !q ||
       g.name?.toLowerCase().includes(q) ||
       g.color?.toLowerCase().includes(q) ||
       g.subcategory?.toLowerCase().includes(q);
-    return matchesCategory && matchesSearch;
+    return matchesCategory && matchesSeason && matchesSearch;
   });
 
   const laundryCount = garments.filter(g => g.inLaundry).length;
@@ -1688,6 +2252,18 @@ export default function App() {
   const topWornGarment =
     garments.length > 0
       ? [...garments].sort((a, b) => (Number(b.wearCount) || 0) - (Number(a.wearCount) || 0))[0]
+      : null;
+
+  // Analítica de Coste por Uso (CPW - Cost Per Wear)
+  const pricedGarments = garments.filter(g => Number(g.price) > 0);
+  const averageCPW =
+    pricedGarments.length > 0
+      ? (
+          pricedGarments.reduce(
+            (acc, g) => acc + Number(g.price) / Math.max(1, Number(g.wearCount) || 1),
+            0
+          ) / pricedGarments.length
+        ).toFixed(1)
       : null;
 
   // ============================================================================
@@ -2172,6 +2748,28 @@ export default function App() {
       ====================================================================== */}
       {activeTab === 'generator' && (
         <main className="p-5 flex-1 space-y-5">
+          {/* Mejora 1: Briefing Matutino Automático */}
+          {morningBriefingMsg && (
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-50 via-indigo-50 to-purple-50 border border-indigo-200/80 shadow-sm flex items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-amber-400/20 text-amber-600 flex items-center justify-center shrink-0">
+                  <Sun className="w-4 h-4" />
+                </div>
+                <p className="text-xs font-bold text-slate-800 leading-snug">
+                  {morningBriefingMsg}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMorningBriefingMsg('')}
+                className="p-1 text-slate-400 hover:text-slate-600 shrink-0"
+                title="Cerrar aviso matutino"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
           {/* Panel de Selección Rápida */}
           <section className="bg-white p-5 rounded-3xl shadow-sm border border-slate-200/70 space-y-5">
             {/* Píldora de Prenda Ancla si el usuario fijó una prenda desde Mi Armario */}
@@ -2806,112 +3404,299 @@ export default function App() {
             );
           })()}
 
-          {/* Generador de Maleta de Viaje (Cápsula Inteligente) */}
-          <section className="bg-slate-900 rounded-3xl p-5 border border-slate-800 shadow-lg space-y-4 text-slate-100">
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
-                  <Briefcase className="w-4 h-4 text-indigo-400" />
-                  <span>🧳 Maleta Cápsula de Viaje IA</span>
+          {/* Atajo directo a la nueva pestaña dedicada de Maleta de Viaje */}
+          <section className="bg-slate-900 rounded-3xl p-4 border border-slate-800 shadow-lg flex items-center justify-between gap-3 text-slate-100">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300 shrink-0">
+                <Briefcase className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-xs font-extrabold text-white truncate">
+                  🧳 ¿Vas a hacer una escapada o viaje?
                 </h3>
-                <p className="text-[11px] text-slate-400">
-                  Mínimas prendas de tu armario que combinan todas entre sí
+                <p className="text-[11px] text-slate-400 truncate">
+                  Prepara tu maleta cápsula y checklist en la pestaña Viaje
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowCapsuleBuilder(!showCapsuleBuilder)}
-                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-indigo-500/30 text-[11px] font-bold transition-colors"
-              >
-                {showCapsuleBuilder ? 'Ocultar' : 'Preparar Maleta'}
-              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab('travel')}
+              className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold shrink-0 transition-colors"
+            >
+              Ir a Viaje →
+            </button>
+          </section>
+        </main>
+      )}
+
+      {/* =====================================================================
+          VISTA 1.8: PESTAÑA DEDICADA "VIAJE" — MALETA CÁPSULA Y CHECKLIST IA
+      ====================================================================== */}
+      {activeTab === 'travel' && (
+        <main className="p-5 flex-1 space-y-4">
+          {/* Cabecera Editorial de Maleta de Viaje */}
+          <section className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-5 border border-indigo-800/50 shadow-xl space-y-4 text-slate-100">
+            <div className="flex justify-between items-start gap-3">
+              <div>
+                <h2 className="text-base font-extrabold text-white flex items-center gap-2">
+                  <Briefcase className="w-5 h-5 text-indigo-400" />
+                  <span>🧳 Modo Viaje y Maleta Cápsula</span>
+                </h2>
+                <p className="text-xs text-slate-300 mt-0.5">
+                  Viaja ligero con las prendas mínimas de tu armario que combinan todas entre sí
+                </p>
+              </div>
+              {capsuleItems.length > 0 && (
+                <span className="px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 shrink-0">
+                  {packedItemIds.length}/{capsuleItems.length} en maleta
+                </span>
+              )}
             </div>
 
-            {showCapsuleBuilder && (
-              <div className="space-y-3.5 pt-2 border-t border-slate-800">
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-400">Duración del viaje</label>
-                    <div className="grid grid-cols-4 gap-1">
-                      {[2, 3, 5, 7].map(d => (
-                        <button
-                          key={d}
-                          type="button"
-                          onClick={() => setTripDays(d)}
-                          className={`py-1.5 rounded-xl text-xs font-extrabold border transition-all ${
-                            tripDays === d
-                              ? 'bg-indigo-600 text-white border-indigo-500'
-                              : 'bg-slate-800 text-slate-400 border-slate-700'
-                          }`}
-                        >
-                          {d}d
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+            {/* Destino opcional */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-indigo-400" /> Destino o nombre del viaje (opcional)
+              </label>
+              <input
+                type="text"
+                placeholder="Ej. Escapada a Madrid, Viaje de trabajo a Lisboa..."
+                value={tripName}
+                onChange={(e) => setTripName(e.target.value)}
+                className="w-full bg-slate-900/90 border border-slate-700 rounded-2xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-400"
+              />
+            </div>
 
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-400">Estilo principal</label>
-                    <div className="grid grid-cols-3 gap-1">
-                      {OCCASIONS.map(occ => (
-                        <button
-                          key={occ.id}
-                          type="button"
-                          onClick={() => setTripOccasion(occ.id)}
-                          className={`py-1.5 rounded-xl text-[10px] font-extrabold border transition-all ${
-                            tripOccasion === occ.id
-                              ? 'bg-indigo-600 text-white border-indigo-500'
-                              : 'bg-slate-800 text-slate-400 border-slate-700'
-                          }`}
-                        >
-                          {occ.id === 'Work' ? 'Trabajo' : occ.id === 'Going Out' ? 'Ocio' : 'Sport'}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+            {/* Selector de Duración (Días) */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-slate-300">1. ¿Cuántos días dura el viaje?</label>
+              <div className="grid grid-cols-5 gap-1.5">
+                {[2, 3, 5, 7, 10].map(d => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setTripDays(d)}
+                    className={`py-2 rounded-xl text-xs font-extrabold border transition-all ${
+                      tripDays === d
+                        ? 'bg-indigo-600 text-white border-indigo-400 shadow-md shadow-indigo-500/25'
+                        : 'bg-slate-800/90 text-slate-300 border-slate-700 hover:bg-slate-800'
+                    }`}
+                  >
+                    {d} días
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Selector de Clima en Destino y Estilo Principal */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-300">2. Clima en tu destino</label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {WARMTH_LEVELS.map(lvl => {
+                    const active = tripWarmth === lvl.value;
+                    return (
+                      <button
+                        key={lvl.value}
+                        type="button"
+                        onClick={() => setTripWarmth(lvl.value)}
+                        className={`py-2 px-2 rounded-xl text-[11px] font-extrabold border transition-all ${
+                          active
+                            ? 'bg-indigo-600 text-white border-indigo-400'
+                            : 'bg-slate-800/90 text-slate-300 border-slate-700'
+                        }`}
+                      >
+                        {lvl.label}
+                      </button>
+                    );
+                  })}
                 </div>
+              </div>
 
-                <button
-                  type="button"
-                  onClick={() => generateTravelCapsule(tripDays, tripOccasion)}
-                  className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md transition-all"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  <span>Seleccionar Cápsula para {tripDays} días</span>
-                </button>
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-300">3. Plan principal del viaje</label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {OCCASIONS.map(occ => (
+                    <button
+                      key={occ.id}
+                      type="button"
+                      onClick={() => setTripOccasion(occ.id)}
+                      className={`py-2 px-2 rounded-xl text-[11px] font-extrabold border transition-all ${
+                        tripOccasion === occ.id
+                          ? 'bg-indigo-600 text-white border-indigo-400'
+                          : 'bg-slate-800/90 text-slate-300 border-slate-700'
+                      }`}
+                    >
+                      {occ.id === 'Work' ? 'Trabajo' : occ.id === 'Going Out' ? 'Ocio/Salir' : 'Deporte'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
 
-                {capsuleItems.length > 0 && (
-                  <div className="space-y-2.5 pt-1">
-                    <div className="flex justify-between items-center text-[11px] text-indigo-300 font-bold">
-                      <span>✨ {capsuleItems.length} prendas seleccionadas:</span>
+            <button
+              type="button"
+              onClick={() => generateTravelCapsule(tripDays, tripOccasion, tripWarmth)}
+              className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-500 hover:opacity-95 text-white font-extrabold text-xs shadow-lg shadow-indigo-500/25 flex items-center justify-center gap-2 transition-all active:scale-[0.99]"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>
+                Generar Maleta Inteligente para {tripDays} días {tripName ? `en ${tripName}` : ''}
+              </span>
+            </button>
+          </section>
+
+          {/* Checklist Interactivo de Maleta */}
+          {capsuleItems.length > 0 ? (
+            <section className="bg-slate-900 rounded-3xl p-5 border border-slate-800 shadow-lg space-y-4 text-slate-100">
+              {(() => {
+                const topsCount = capsuleItems.filter(
+                  g => getSlotFromType(g.subcategory, g.category) === 'Top'
+                ).length;
+                const bottomsCount = capsuleItems.filter(
+                  g => getSlotFromType(g.subcategory, g.category) === 'Bottom'
+                ).length;
+                const outfitCombos = Math.max(1, topsCount * bottomsCount);
+                const progressPct = Math.round((packedItemIds.length / capsuleItems.length) * 100);
+
+                return (
+                  <>
+                    <div className="flex flex-wrap justify-between items-center gap-2 border-b border-slate-800 pb-3">
+                      <div>
+                        <h3 className="text-sm font-extrabold text-white">
+                          {tripName ? `🧳 Maleta para ${tripName}` : `🧳 Tu Checklist de Maleta (${tripDays} días)`}
+                        </h3>
+                        <p className="text-[11px] text-indigo-300 font-semibold">
+                          ✨ Con estas {capsuleItems.length} prendas creas hasta {outfitCombos} looks distintos
+                        </p>
+                      </div>
                       <button
                         type="button"
-                        onClick={() => setCapsuleItems([])}
-                        className="text-slate-400 hover:text-rose-400"
+                        onClick={() => {
+                          if (packedItemIds.length === capsuleItems.length) {
+                            setPackedItemIds([]);
+                          } else {
+                            setPackedItemIds(capsuleItems.map(c => String(c.id)));
+                          }
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-indigo-300 border border-slate-700 transition-colors"
                       >
-                        Limpiar
+                        {packedItemIds.length === capsuleItems.length ? 'Desmarcar todo' : '✓ Marcar todas'}
                       </button>
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      {capsuleItems.map(item => (
+
+                    {/* Barra de progreso de empacado */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[11px] font-bold">
+                        <span className="text-slate-400">Progreso de tu maleta</span>
+                        <span className="text-emerald-400">
+                          {packedItemIds.length} de {capsuleItems.length} prendas listas ({progressPct}%)
+                        </span>
+                      </div>
+                      <div className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
                         <div
-                          key={item.id}
-                          className="bg-slate-800/90 rounded-xl p-1.5 border border-slate-700/80 flex flex-col gap-1"
-                        >
-                          <img
-                            src={item.image}
-                            alt={item.name}
-                            className="w-full h-16 object-cover rounded-lg"
-                          />
-                          <p className="text-[10px] font-bold text-slate-200 truncate">{item.name}</p>
-                        </div>
-                      ))}
+                          className="h-full bg-gradient-to-r from-indigo-500 to-emerald-400 transition-all duration-300"
+                          style={{ width: `${progressPct}%` }}
+                        />
+                      </div>
                     </div>
-                  </div>
-                )}
+
+                    <p className="text-[11px] text-slate-400">
+                      Toca cada prenda cuando la metas en la maleta o pulsa 🔄 si prefieres llevar otra:
+                    </p>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      {capsuleItems.map(item => {
+                        const isPacked = packedItemIds.includes(String(item.id));
+                        const typeObj = GARMENT_TYPES.find(t => t.id === item.subcategory);
+                        return (
+                          <div
+                            key={item.id}
+                            onClick={() => togglePackItem(item.id)}
+                            className={`cursor-pointer rounded-2xl overflow-hidden border transition-all flex flex-col justify-between ${
+                              isPacked
+                                ? 'bg-emerald-950/30 border-emerald-500/60 ring-1 ring-emerald-500/30'
+                                : 'bg-slate-800/90 border-slate-700/80 hover:border-indigo-500/50'
+                            }`}
+                          >
+                            <div className="relative h-28 bg-slate-950">
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className={`w-full h-full object-cover transition-opacity ${
+                                  isPacked ? 'opacity-80' : ''
+                                }`}
+                              />
+                              <span
+                                className={`absolute top-2 left-2 px-2 py-0.5 rounded-full text-[9px] font-extrabold ${
+                                  isPacked
+                                    ? 'bg-emerald-500 text-slate-950'
+                                    : 'bg-slate-900/80 text-slate-200 border border-white/10'
+                                }`}
+                              >
+                                {isPacked ? '✓ En la maleta' : 'Pendiente'}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  swapCapsuleItem(item);
+                                }}
+                                title="Cambiar por otra prenda de tu armario"
+                                className="absolute top-2 right-2 p-1.5 rounded-xl bg-slate-900/85 hover:bg-indigo-600 text-slate-200 hover:text-white border border-white/10 transition-colors"
+                              >
+                                <RefreshCw className="w-3.5 h-3.5" />
+                              </button>
+                              <span className="absolute bottom-1.5 left-2 px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-900/80 text-indigo-300 backdrop-blur-sm">
+                                {typeObj?.emoji} {typeObj?.singular || item.subcategory}
+                              </span>
+                            </div>
+                            <div className="p-2.5">
+                              <p className="text-xs font-bold text-slate-100 truncate">{item.name}</p>
+                              <p className="text-[10px] text-slate-400">{item.color}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Acciones de Fin de Viaje */}
+                    <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={finishTripAndSendToLaundry}
+                        className="flex-1 py-3 px-4 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-500/20 transition-all"
+                      >
+                        <WashingMachine className="w-4 h-4" />
+                        <span>Fin del viaje: Enviar maleta a Colada (+1 uso)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCapsuleItems([]);
+                          setPackedItemIds([]);
+                        }}
+                        className="py-3 px-4 rounded-2xl bg-slate-800 hover:bg-rose-950 text-slate-300 hover:text-rose-300 text-xs font-bold border border-slate-700 transition-colors"
+                      >
+                        Vaciar maleta
+                      </button>
+                    </div>
+                  </>
+                );
+              })()}
+            </section>
+          ) : (
+            <div className="bg-white rounded-3xl p-8 text-center border border-slate-200/70 space-y-2">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto">
+                <Briefcase className="w-6 h-6" />
               </div>
-            )}
-          </section>
+              <p className="text-sm font-bold text-slate-800">Tu maleta inteligente está lista para empezar</p>
+              <p className="text-xs text-slate-500">
+                Elige arriba los días, el clima de tu destino y el estilo del viaje para que la IA seleccione qué prendas meter en tu maleta.
+              </p>
+            </div>
+          )}
         </main>
       )}
 
@@ -2935,9 +3720,9 @@ export default function App() {
             </button>
           </div>
 
-          {/* Barra Compacta de Analítica de Uso del Armario */}
+          {/* Barra Compacta de Analítica de Uso y Amortización (CPW) del Armario */}
           {garments.length > 0 && (
-            <div className="grid grid-cols-3 gap-2 bg-slate-900 text-slate-100 p-3 rounded-2xl border border-slate-800 shadow-sm">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-900 text-slate-100 p-3 rounded-2xl border border-slate-800 shadow-sm">
               <div className="bg-slate-800/80 rounded-xl p-2.5 border border-slate-700/70">
                 <p className="text-[10px] text-slate-400 font-bold uppercase">Uso Activo</p>
                 <p className="text-sm font-extrabold text-emerald-400 mt-0.5">
@@ -2956,6 +3741,14 @@ export default function App() {
                 <p className="text-[10px] text-slate-400">
                   {topWornGarment ? `${Number(topWornGarment.wearCount) || 0} puestas` : '0 puestas'}
                 </p>
+              </div>
+
+              <div className="bg-slate-800/80 rounded-xl p-2.5 border border-slate-700/70">
+                <p className="text-[10px] text-emerald-400 font-bold uppercase">Coste / Uso</p>
+                <p className="text-sm font-extrabold text-white mt-0.5">
+                  {averageCPW ? `${averageCPW} €` : '—'}
+                </p>
+                <p className="text-[10px] text-slate-400 truncate">media por puesta</p>
               </div>
 
               <button
@@ -2999,7 +3792,7 @@ export default function App() {
             )}
           </div>
 
-          {/* Barra de Filtros por Categoría (Píldoras con Emoji y Contador) */}
+          {/* Barra de Filtros por Categoría + Modo Temporada en 1 Clic */}
           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
             <button
               onClick={() => setSelectedFilter('ALL')}
@@ -3010,6 +3803,19 @@ export default function App() {
               }`}
             >
               Todo ({garments.length})
+            </button>
+            {/* Mejora 4: Modo Temporada en 1 Clic */}
+            <button
+              type="button"
+              onClick={() => setSeasonFilterActive(!seasonFilterActive)}
+              className={`px-3.5 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1 ${
+                seasonFilterActive
+                  ? 'bg-sky-600 text-white shadow-sm'
+                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+              }`}
+              title="Oculta automáticamente las prendas fuera de estación según el clima actual"
+            >
+              <span>🌤️ Solo Temporada ({temp}°C)</span>
             </button>
             <button
               onClick={() => setSelectedFilter('UNWORN')}
@@ -3177,6 +3983,67 @@ export default function App() {
                             ))}
                           </div>
                         )}
+
+                        {/* Mejora 2: Coste por Uso (CPW) y Amortización de la Prenda */}
+                        <div className="flex items-center justify-between gap-1.5 pt-0.5">
+                          {editingPriceId === g.id ? (
+                            <div className="flex items-center gap-1 w-full">
+                              <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                placeholder="Precio €"
+                                value={editingPriceVal}
+                                onChange={(e) => setEditingPriceVal(e.target.value)}
+                                className="w-full bg-slate-900 border border-indigo-500 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => saveGarmentPrice(g.id, editingPriceVal)}
+                                className="px-2 py-1 rounded-lg bg-emerald-500 text-slate-950 text-[10px] font-extrabold shrink-0"
+                              >
+                                OK
+                              </button>
+                            </div>
+                          ) : Number(g.price) > 0 ? (
+                            (() => {
+                              const wears = Number(g.wearCount) || 0;
+                              const cpw = (Number(g.price) / Math.max(1, wears)).toFixed(1);
+                              const isAmortized = wears > 0 && Number(cpw) <= 3;
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingPriceId(g.id);
+                                    setEditingPriceVal(String(g.price || ''));
+                                  }}
+                                  title="Toca para editar el precio de compra"
+                                  className={`w-full py-1 px-2 rounded-lg border text-[10px] font-bold flex items-center justify-between transition-colors ${
+                                    isAmortized
+                                      ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
+                                      : 'bg-slate-900/70 border-slate-700/80 text-slate-300 hover:border-indigo-500/50'
+                                  }`}
+                                >
+                                  <span>💶 {cpw} € / uso</span>
+                                  <span className="text-[9px] opacity-80">
+                                    {isAmortized ? '🏆 Amortizada' : `${g.price}€`}
+                                  </span>
+                                </button>
+                              );
+                            })()
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingPriceId(g.id);
+                                setEditingPriceVal('');
+                              }}
+                              className="w-full py-1 px-2 rounded-lg bg-slate-900/50 hover:bg-slate-900 border border-dashed border-slate-700 text-[10px] font-semibold text-slate-400 hover:text-indigo-300 text-left transition-colors"
+                            >
+                              + Añadir precio (€) para Coste/Uso
+                            </button>
+                          )}
+                        </div>
 
                         {/* Selector directo para reclasificar con 1 toque */}
                         <select
@@ -3402,7 +4269,15 @@ export default function App() {
                         alt="Prenda"
                         className="w-full h-52 object-cover"
                       />
-                      <div className="absolute top-3 right-3 flex gap-1.5">
+                      <div className="absolute top-3 right-3 flex flex-wrap gap-1.5">
+                        <button
+                          type="button"
+                          onClick={applyStudioToExistingPhoto}
+                          className="px-2.5 py-1.5 bg-slate-900/90 hover:bg-slate-800 text-xs font-bold text-amber-300 rounded-xl shadow flex items-center gap-1"
+                          title="Limpia bordes desordenados y aplica fondo de estudio"
+                        >
+                          <span>✨ Fondo Estudio</span>
+                        </button>
                         <button
                           type="button"
                           disabled={analyzingPhoto}
@@ -3437,24 +4312,37 @@ export default function App() {
                     )}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => startCamera()}
-                      className="p-5 bg-indigo-50 hover:bg-indigo-100 border-2 border-dashed border-indigo-300 rounded-2xl flex flex-col items-center justify-center gap-2 text-indigo-700 transition-all"
-                    >
-                      <Camera className="w-7 h-7" />
-                      <span className="text-xs font-bold">Cámara en Vivo</span>
-                    </button>
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => startCamera()}
+                        className="p-5 bg-indigo-50 hover:bg-indigo-100 border-2 border-dashed border-indigo-300 rounded-2xl flex flex-col items-center justify-center gap-2 text-indigo-700 transition-all"
+                      >
+                        <Camera className="w-7 h-7" />
+                        <span className="text-xs font-bold">Cámara en Vivo</span>
+                      </button>
 
-                    <button
-                      type="button"
-                      onClick={() => nativeCameraInputRef.current?.click()}
-                      className="p-5 bg-slate-50 hover:bg-slate-100 border-2 border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center gap-2 text-slate-700 transition-all"
-                    >
-                      <ImageIcon className="w-7 h-7 text-indigo-500" />
-                      <span className="text-xs font-bold">Móvil / Galería</span>
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => nativeCameraInputRef.current?.click()}
+                        className="p-5 bg-slate-50 hover:bg-slate-100 border-2 border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center gap-2 text-slate-700 transition-all"
+                      >
+                        <ImageIcon className="w-7 h-7 text-indigo-500" />
+                        <span className="text-xs font-bold">Móvil / Galería</span>
+                      </button>
+                    </div>
+                    <label className="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50 border border-slate-200/80 cursor-pointer">
+                      <span className="text-[11px] font-bold text-slate-700">
+                        ✨ Encuadre y Fondo Limpio de Estudio automático
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={studioCutoutMode}
+                        onChange={(e) => setStudioCutoutMode(e.target.checked)}
+                        className="w-4 h-4 rounded accent-indigo-600"
+                      />
+                    </label>
                   </div>
                 )}
 
@@ -3539,20 +4427,36 @@ export default function App() {
                 </div>
               </div>
 
-              {/* 4. Nombre opcional (se genera solo si lo dejas en blanco) */}
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">
-                  Nombre <span className="text-slate-400 font-normal">(opcional, se rellena solo)</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder={`Ej: ${
-                    GARMENT_TYPES.find(t => t.id === newGarment.subcategory)?.singular || 'Prenda'
-                  } ${newGarment.color}`}
-                  value={newGarment.name}
-                  onChange={(e) => setNewGarment(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500 focus:bg-white"
-                />
+              {/* 4. Nombre opcional y Precio (€) para Coste por Uso */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="col-span-2 space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    Nombre <span className="text-slate-400 font-normal">(opcional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder={`Ej: ${
+                      GARMENT_TYPES.find(t => t.id === newGarment.subcategory)?.singular || 'Prenda'
+                    } ${newGarment.color}`}
+                    value={newGarment.name}
+                    onChange={(e) => setNewGarment(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500 focus:bg-white"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    Precio (€)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="Ej: 39"
+                    value={newGarment.price}
+                    onChange={(e) => setNewGarment(prev => ({ ...prev, price: e.target.value }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500 focus:bg-white"
+                  />
+                </div>
               </div>
 
               {/* 5. Ocasión y Abrigo */}
@@ -3597,34 +4501,51 @@ export default function App() {
       )}
 
       {/* =====================================================================
-          BARRA DE NAVEGACIÓN INFERIOR FLOTANTE Y MODERNA (5 ACCESOS)
+          BARRA DE NAVEGACIÓN INFERIOR FLOTANTE Y MODERNA (CON PESTAÑA VIAJE)
       ====================================================================== */}
-      <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 max-w-md w-[94%] bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xl shadow-slate-300/50 rounded-3xl flex justify-around items-center p-2 z-30">
+      <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 max-w-md w-[95%] bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xl shadow-slate-300/50 rounded-3xl flex justify-between items-center px-2 py-1.5 z-30">
         <button
           onClick={() => setActiveTab('generator')}
-          className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-2xl text-[11px] font-bold transition-all ${
+          className={`flex flex-col items-center gap-0.5 px-2.5 py-2 rounded-2xl text-[10px] font-bold transition-all ${
             activeTab === 'generator'
               ? 'text-indigo-600 bg-indigo-50'
               : 'text-slate-400 hover:text-slate-700'
           }`}
         >
-          <Sparkles className="w-5 h-5" />
+          <Sparkles className="w-4 h-4" />
           <span>Hoy</span>
         </button>
 
         <button
           onClick={() => setActiveTab('planner')}
-          className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-2xl text-[11px] font-bold relative transition-all ${
+          className={`flex flex-col items-center gap-0.5 px-2.5 py-2 rounded-2xl text-[10px] font-bold relative transition-all ${
             activeTab === 'planner'
               ? 'text-indigo-600 bg-indigo-50'
               : 'text-slate-400 hover:text-slate-700'
           }`}
         >
-          <Calendar className="w-5 h-5" />
+          <Calendar className="w-4 h-4" />
           <span>Semana</span>
           {plannedDaysCount > 0 && (
-            <span className="absolute top-1.5 right-2 w-4 h-4 bg-indigo-600 text-white text-[9px] font-extrabold rounded-full flex items-center justify-center">
+            <span className="absolute top-1 right-1 w-3.5 h-3.5 bg-indigo-600 text-white text-[8px] font-extrabold rounded-full flex items-center justify-center">
               {plannedDaysCount}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('travel')}
+          className={`flex flex-col items-center gap-0.5 px-2.5 py-2 rounded-2xl text-[10px] font-bold relative transition-all ${
+            activeTab === 'travel'
+              ? 'text-indigo-600 bg-indigo-50'
+              : 'text-slate-400 hover:text-slate-700'
+          }`}
+        >
+          <Briefcase className="w-4 h-4" />
+          <span>Viaje</span>
+          {capsuleItems.length > 0 && (
+            <span className="absolute top-1 right-1 w-3.5 h-3.5 bg-emerald-500 text-slate-950 text-[8px] font-extrabold rounded-full flex items-center justify-center">
+              {capsuleItems.length}
             </span>
           )}
         </button>
@@ -3632,7 +4553,7 @@ export default function App() {
         {/* Botón Central Destacado de Cámara */}
         <button
           onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold text-xs shadow-md shadow-indigo-500/30 hover:scale-105 transition-transform"
+          className="flex items-center gap-1 px-3 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold text-[11px] shadow-md shadow-indigo-500/30 hover:scale-105 transition-transform"
         >
           <Camera className="w-4 h-4" />
           <span>+ Foto</span>
@@ -3640,28 +4561,28 @@ export default function App() {
 
         <button
           onClick={() => setActiveTab('closet')}
-          className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-2xl text-[11px] font-bold transition-all ${
+          className={`flex flex-col items-center gap-0.5 px-2.5 py-2 rounded-2xl text-[10px] font-bold transition-all ${
             activeTab === 'closet'
               ? 'text-indigo-600 bg-indigo-50'
               : 'text-slate-400 hover:text-slate-700'
           }`}
         >
-          <Shirt className="w-5 h-5" />
+          <Shirt className="w-4 h-4" />
           <span>Armario</span>
         </button>
 
         <button
           onClick={() => setActiveTab('laundry')}
-          className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-2xl text-[11px] font-bold relative transition-all ${
+          className={`flex flex-col items-center gap-0.5 px-2.5 py-2 rounded-2xl text-[10px] font-bold relative transition-all ${
             activeTab === 'laundry'
               ? 'text-indigo-600 bg-indigo-50'
               : 'text-slate-400 hover:text-slate-700'
           }`}
         >
-          <WashingMachine className="w-5 h-5" />
+          <WashingMachine className="w-4 h-4" />
           <span>Colada</span>
           {laundryCount > 0 && (
-            <span className="absolute top-1.5 right-2 w-4 h-4 bg-amber-500 text-white text-[9px] font-extrabold rounded-full flex items-center justify-center">
+            <span className="absolute top-1 right-1 w-3.5 h-3.5 bg-amber-500 text-white text-[8px] font-extrabold rounded-full flex items-center justify-center">
               {laundryCount}
             </span>
           )}
