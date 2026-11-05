@@ -2267,29 +2267,29 @@ export default function App() {
       : null;
 
   // ============================================================================
-  // PANTALLA DE ACCESO MODERNA Y RÁPIDA (CON PERFILES DE 1 CLIC)
+  // PANTALLA DE ACCESO EDITORIAL ("QUIET LUXURY") CON PERFILES DE 1 CLIC
   // ============================================================================
   if (!currentUser) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex flex-col justify-center items-center p-5">
-        <div className="max-w-md w-full bg-white rounded-3xl p-7 shadow-xl shadow-indigo-100/70 border border-slate-100 space-y-6">
+      <div className="min-h-screen bg-[#FAF9F6] flex flex-col justify-center items-center p-5">
+        <div className="max-w-md w-full bg-white rounded-3xl p-7 shadow-[0_8px_30px_rgb(15,23,42,0.06)] border border-slate-200/80 space-y-6">
           <div className="text-center space-y-2">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center mx-auto shadow-lg shadow-indigo-500/30">
-              <Sparkles className="w-7 h-7 text-white" />
+            <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center mx-auto shadow-md">
+              <Sparkles className="w-6 h-6 text-white" />
             </div>
             <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
               Smart Closet
             </h1>
-            <p className="text-sm text-slate-500">
-              Tu armario digital y estilista personal inteligente
+            <p className="text-xs font-medium text-slate-500">
+              Tu armario cápsula digital y estilista personal inteligente
             </p>
           </div>
 
           {/* Acceso en 1 Toque si ya hay usuarios en el dispositivo */}
           {savedUsers.length > 0 && (
             <div className="space-y-2.5">
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Entrar en 1 toque a tu armario
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                Acceso directo a tu armario
               </p>
               <div className="grid grid-cols-1 gap-2">
                 {savedUsers.map(u => (
@@ -2297,29 +2297,29 @@ export default function App() {
                     key={u.username}
                     type="button"
                     onClick={() => quickLoginUser(u)}
-                    className="w-full p-3 rounded-2xl bg-slate-50 hover:bg-indigo-50/70 border border-slate-200/80 hover:border-indigo-300 flex items-center justify-between transition-all group"
+                    className="w-full p-3 rounded-2xl bg-[#FAF9F6] hover:bg-slate-100/80 border border-slate-200/80 hover:border-slate-300 flex items-center justify-between transition-all group"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-sm shadow-sm">
+                      <div className="w-10 h-10 rounded-full bg-slate-900 text-white font-bold flex items-center justify-center text-sm shadow-sm">
                         {(u.name || u.username).charAt(0).toUpperCase()}
                       </div>
                       <div className="text-left">
-                        <p className="text-sm font-bold text-slate-800 group-hover:text-indigo-700">
+                        <p className="text-sm font-bold text-slate-900">
                           {u.name}
                         </p>
                         <p className="text-xs text-slate-400">@{u.username}</p>
                       </div>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition-all" />
+                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-900 group-hover:translate-x-0.5 transition-all" />
                   </button>
                 ))}
               </div>
               <div className="relative py-1">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-200"></div>
+                  <div className="w-full border-t border-slate-200/80"></div>
                 </div>
                 <div className="relative flex justify-center">
-                  <span className="bg-white px-3 text-xs text-slate-400">o accede con otra cuenta</span>
+                  <span className="bg-white px-3 text-[11px] text-slate-400">o accede con otra cuenta</span>
                 </div>
               </div>
             </div>
@@ -2362,7 +2362,7 @@ export default function App() {
                     placeholder="Ej. Javi"
                     value={authName}
                     onChange={(e) => setAuthName(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
+                    className="w-full bg-[#FAF9F6] border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-slate-900 focus:bg-white transition-all"
                   />
                 </div>
               </div>
@@ -2377,7 +2377,7 @@ export default function App() {
                   placeholder="Tu usuario (ej. javi)"
                   value={authUsername}
                   onChange={(e) => setAuthUsername(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
+                  className="w-full bg-[#FAF9F6] border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-slate-900 focus:bg-white transition-all"
                   required
                 />
               </div>
@@ -2394,7 +2394,7 @@ export default function App() {
                   placeholder="•••••••• (mín. 4 caracteres)"
                   value={authPassword}
                   onChange={(e) => setAuthPassword(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
+                  className="w-full bg-[#FAF9F6] border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-slate-900 focus:bg-white transition-all"
                   required={authMode === 'register'}
                 />
               </div>
@@ -2403,13 +2403,13 @@ export default function App() {
             {authMode === 'register' && (
               <>
                 {/* Ficha Morfológica y de Estilo */}
-                <div className="p-3.5 rounded-2xl bg-indigo-50/50 border border-indigo-100 space-y-3">
+                <div className="p-4 rounded-2xl bg-[#FAF9F6] border border-slate-200/80 space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-indigo-700 flex items-center gap-1.5">
-                      <ShoppingBag className="w-3.5 h-3.5" /> Perfil de Talla y Estilo
+                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                      <ShoppingBag className="w-3.5 h-3.5 text-indigo-600" /> Perfil de Talla y Estilo
                     </span>
                     {estimateRecommendedSize(authWeight, authHeight, authGender) && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-600 text-white">
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-900 text-white">
                         Talla est.: {estimateRecommendedSize(authWeight, authHeight, authGender)}
                       </span>
                     )}
@@ -2429,7 +2429,7 @@ export default function App() {
                           onClick={() => setAuthGender(g.id)}
                           className={`py-2 rounded-xl text-xs font-bold border transition-all ${
                             authGender === g.id
-                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                              ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
                               : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                           }`}
                         >
@@ -2443,7 +2443,7 @@ export default function App() {
                   <div className="grid grid-cols-2 gap-2.5">
                     <div className="space-y-1">
                       <label className="text-xs font-semibold text-slate-700 flex items-center gap-1">
-                        <Ruler className="w-3.5 h-3.5 text-indigo-500" /> Altura (cm)
+                        <Ruler className="w-3.5 h-3.5 text-slate-500" /> Altura (cm)
                       </label>
                       <input
                         type="number"
@@ -2452,14 +2452,14 @@ export default function App() {
                         placeholder="Ej. 178"
                         value={authHeight}
                         onChange={(e) => setAuthHeight(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-slate-900"
                         required
                       />
                     </div>
 
                     <div className="space-y-1">
                       <label className="text-xs font-semibold text-slate-700 flex items-center gap-1">
-                        <Scale className="w-3.5 h-3.5 text-indigo-500" /> Peso (kg)
+                        <Scale className="w-3.5 h-3.5 text-slate-500" /> Peso (kg)
                       </label>
                       <input
                         type="number"
@@ -2469,7 +2469,7 @@ export default function App() {
                         placeholder="Ej. 74"
                         value={authWeight}
                         onChange={(e) => setAuthWeight(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-slate-900"
                         required
                       />
                     </div>
@@ -2479,7 +2479,7 @@ export default function App() {
                   <div className="space-y-1">
                     <div className="flex justify-between items-center">
                       <label className="text-xs font-semibold text-slate-700 flex items-center gap-1">
-                        <Cake className="w-3.5 h-3.5 text-indigo-500" /> Fecha de nacimiento
+                        <Cake className="w-3.5 h-3.5 text-slate-500" /> Fecha de nacimiento
                       </label>
                       {calculateAgeFromBirthDate(authBirthDate) !== null && (
                         <span className="text-[11px] font-bold text-indigo-600">
@@ -2491,18 +2491,18 @@ export default function App() {
                       type="date"
                       value={authBirthDate}
                       onChange={(e) => setAuthBirthDate(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-slate-900"
                       required
                     />
                   </div>
                 </div>
 
-                <label className="flex items-center gap-2.5 text-xs text-slate-600 cursor-pointer p-2.5 rounded-xl bg-slate-50 border border-slate-200/70">
+                <label className="flex items-center gap-2.5 text-xs text-slate-600 cursor-pointer p-2.5 rounded-xl bg-[#FAF9F6] border border-slate-200/70">
                   <input
                     type="checkbox"
                     checked={requirePinOnQuickLogin}
                     onChange={(e) => setRequirePinOnQuickLogin(e.target.checked)}
-                    className="w-4 h-4 rounded accent-indigo-600"
+                    className="w-4 h-4 rounded accent-slate-900"
                   />
                   <span>Exigir siempre mi contraseña al entrar desde el acceso rápido</span>
                 </label>
@@ -2517,7 +2517,7 @@ export default function App() {
 
             <button
               type="submit"
-              className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] font-bold rounded-2xl text-sm text-white shadow-lg shadow-indigo-600/25 transition-all"
+              className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 active:scale-[0.99] font-bold rounded-2xl text-sm text-white shadow-md transition-all"
             >
               {authMode === 'login' ? 'Entrar a mi Armario' : 'Crear mi Armario'}
             </button>
@@ -2528,50 +2528,50 @@ export default function App() {
   }
 
   // ============================================================================
-  // APLICACIÓN PRINCIPAL (MODERNA, LIMPIA Y PRÁCTICA)
+  // APLICACIÓN PRINCIPAL — SISTEMA DE DISEÑO EDITORIAL UNIFICADO
   // ============================================================================
   return (
-    <div className="max-w-lg mx-auto min-h-screen bg-slate-50 text-slate-900 flex flex-col pb-28 shadow-xl shadow-slate-200/60 border-x border-slate-200/60 relative">
+    <div className="max-w-md mx-auto min-h-screen bg-[#FAF9F6] text-slate-900 flex flex-col pb-28 shadow-[0_0_50px_rgba(15,23,42,0.06)] border-x border-slate-200/70 relative">
       {/* Notificación flotante (Toast) */}
       {toastMsg && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-full text-xs font-semibold shadow-xl flex items-center gap-2 animate-bounce">
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-full text-xs font-semibold shadow-xl flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>{toastMsg}</span>
         </div>
       )}
 
-      {/* Cabecera Minimalista con Acceso a Ficha Morfológica / Talla */}
-      <header className="px-5 pt-4 pb-3 bg-white/90 backdrop-blur-md sticky top-0 z-20 border-b border-slate-200/70 flex justify-between items-center">
-        <div className="flex items-center gap-2.5">
+      {/* Cabecera Editorial Minimalista */}
+      <header className="px-5 pt-4 pb-3.5 bg-white/90 backdrop-blur-xl sticky top-0 z-20 border-b border-slate-200/70 flex justify-between items-center">
+        <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => setShowProfileModal(true)}
             title="Editar mi ficha de talla, altura y peso"
-            className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white font-bold text-sm shadow-sm hover:scale-105 transition-transform"
+            className="w-9 h-9 rounded-full bg-slate-900 flex items-center justify-center text-white font-bold text-xs shadow-sm hover:bg-indigo-600 transition-colors"
           >
             {(currentUser.name || currentUser.username).charAt(0).toUpperCase()}
           </button>
           <div>
             <div className="flex items-center gap-1.5">
-              <h1 className="text-sm font-extrabold text-slate-900 leading-tight">
-                Hola, {currentUser.name}
+              <h1 className="text-sm font-extrabold text-slate-900 tracking-tight">
+                {currentUser.name}
               </h1>
               <button
                 type="button"
                 onClick={() => setShowProfileModal(true)}
-                className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200/70 hover:bg-indigo-100 transition-colors"
+                className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200/80 hover:bg-slate-200 transition-colors"
               >
                 {estimateRecommendedSize(currentUser.weightKg, currentUser.heightCm, currentUser.gender)
                   ? `Talla ${estimateRecommendedSize(currentUser.weightKg, currentUser.heightCm, currentUser.gender)}`
-                  : 'Mi Talla / Medidas'}
+                  : 'Medidas'}
               </button>
             </div>
-            <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-medium">
-              <MapPin className="w-3 h-3 text-indigo-500" />
+            <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-medium mt-0.5">
+              <MapPin className="w-3 h-3 text-slate-400" />
               <span>{locationName}</span>
               <span>•</span>
               <span className="text-slate-700 font-semibold">{temp}°C</span>
-              {isRaining && <Droplets className="w-3 h-3 text-blue-500" />}
+              {isRaining && <Droplets className="w-3 h-3 text-sky-500" />}
             </div>
           </div>
         </div>
@@ -2579,7 +2579,7 @@ export default function App() {
         <button
           onClick={handleLogout}
           title="Cambiar de usuario"
-          className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-rose-600 bg-slate-100 hover:bg-rose-50 px-3 py-2 rounded-xl transition-colors"
+          className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900 bg-slate-100/80 hover:bg-slate-200/70 px-3 py-2 rounded-full transition-colors"
         >
           <LogOut className="w-3.5 h-3.5" />
           <span>Salir</span>
@@ -2588,12 +2588,12 @@ export default function App() {
 
       {/* Modal de Ficha Morfológica y Perfil Personal */}
       {showProfileModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl border border-slate-100">
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-100">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <div>
                 <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-                  <User className="w-5 h-5 text-indigo-600" /> Mi Perfil y Medidas
+                  <User className="w-5 h-5 text-slate-900" /> Mi Perfil y Medidas
                 </h3>
                 <p className="text-[11px] text-slate-500">
                   Personaliza tus datos para ajustar tus recomendaciones
@@ -2622,7 +2622,7 @@ export default function App() {
                       onClick={() => setCurrentUser(prev => ({ ...prev, gender: g.id }))}
                       className={`py-2 rounded-xl text-xs font-bold border transition-all ${
                         (currentUser.gender || 'hombre') === g.id
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                          ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
                           : 'bg-slate-50 text-slate-600 border-slate-200'
                       }`}
                     >
@@ -2635,7 +2635,7 @@ export default function App() {
               <div className="grid grid-cols-2 gap-2.5">
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
-                    <Ruler className="w-3.5 h-3.5 text-indigo-500" /> Altura (cm)
+                    <Ruler className="w-3.5 h-3.5 text-slate-500" /> Altura (cm)
                   </label>
                   <input
                     type="number"
@@ -2644,13 +2644,13 @@ export default function App() {
                     placeholder="178"
                     value={currentUser.heightCm || ''}
                     onChange={(e) => setCurrentUser(prev => ({ ...prev, heightCm: e.target.value ? Number(e.target.value) : '' }))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-slate-900"
                   />
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
-                    <Scale className="w-3.5 h-3.5 text-indigo-500" /> Peso (kg)
+                    <Scale className="w-3.5 h-3.5 text-slate-500" /> Peso (kg)
                   </label>
                   <input
                     type="number"
@@ -2660,7 +2660,7 @@ export default function App() {
                     placeholder="74"
                     value={currentUser.weightKg || ''}
                     onChange={(e) => setCurrentUser(prev => ({ ...prev, weightKg: e.target.value ? Number(e.target.value) : '' }))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-slate-900"
                   />
                 </div>
               </div>
@@ -2668,7 +2668,7 @@ export default function App() {
               <div className="space-y-1">
                 <div className="flex justify-between items-center">
                   <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
-                    <Cake className="w-3.5 h-3.5 text-indigo-500" /> Fecha de nacimiento
+                    <Cake className="w-3.5 h-3.5 text-slate-500" /> Fecha de nacimiento
                   </label>
                   {calculateAgeFromBirthDate(currentUser.birthDate) !== null && (
                     <span className="text-xs font-bold text-indigo-600">
@@ -2680,14 +2680,14 @@ export default function App() {
                   type="date"
                   value={currentUser.birthDate || ''}
                   onChange={(e) => setCurrentUser(prev => ({ ...prev, birthDate: e.target.value }))}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-slate-900"
                 />
               </div>
 
               {estimateRecommendedSize(currentUser.weightKg, currentUser.heightCm, currentUser.gender) && (
-                <div className="p-3 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-between text-xs">
-                  <span className="font-semibold text-indigo-950">Tu talla orientativa:</span>
-                  <span className="font-extrabold text-indigo-700 bg-white px-2.5 py-1 rounded-xl border border-indigo-200">
+                <div className="p-3 rounded-2xl bg-[#FAF9F6] border border-slate-200 flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-700">Tu talla orientativa:</span>
+                  <span className="font-extrabold text-slate-900 bg-white px-2.5 py-1 rounded-xl border border-slate-200">
                     {estimateRecommendedSize(currentUser.weightKg, currentUser.heightCm, currentUser.gender)}
                   </span>
                 </div>
@@ -2703,14 +2703,14 @@ export default function App() {
                       requirePinOnQuickLogin: e.target.checked
                     }))
                   }
-                  className="w-4 h-4 rounded accent-indigo-600"
+                  className="w-4 h-4 rounded accent-slate-900"
                 />
                 <span>Pedir siempre contraseña al cambiar de usuario</span>
               </label>
 
               <button
                 type="submit"
-                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl text-xs shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center gap-1.5"
+                className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-2xl text-xs shadow-md transition-all flex items-center justify-center gap-1.5"
               >
                 <Check className="w-4 h-4" />
                 <span>Guardar Perfil</span>
@@ -2747,15 +2747,15 @@ export default function App() {
           VISTA 1: GENERADOR DE OUTFITS ("HOY")
       ====================================================================== */}
       {activeTab === 'generator' && (
-        <main className="p-5 flex-1 space-y-5">
+        <main className="p-4 flex-1 space-y-4">
           {/* Mejora 1: Briefing Matutino Automático */}
           {morningBriefingMsg && (
-            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-50 via-indigo-50 to-purple-50 border border-indigo-200/80 shadow-sm flex items-center justify-between gap-2.5">
+            <div className="p-3.5 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between gap-2.5">
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-xl bg-amber-400/20 text-amber-600 flex items-center justify-center shrink-0">
+                <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 border border-amber-200/60 flex items-center justify-center shrink-0">
                   <Sun className="w-4 h-4" />
                 </div>
-                <p className="text-xs font-bold text-slate-800 leading-snug">
+                <p className="text-xs font-semibold text-slate-800 leading-snug">
                   {morningBriefingMsg}
                 </p>
               </div>
@@ -2771,15 +2771,15 @@ export default function App() {
           )}
 
           {/* Panel de Selección Rápida */}
-          <section className="bg-white p-5 rounded-3xl shadow-sm border border-slate-200/70 space-y-5">
+          <section className="bg-white p-5 rounded-3xl shadow-[0_2px_16px_-4px_rgba(15,23,42,0.05)] border border-slate-200/80 space-y-4">
             {/* Píldora de Prenda Ancla si el usuario fijó una prenda desde Mi Armario */}
             {lockedGarment && (
-              <div className="p-3 rounded-2xl bg-indigo-50/90 border border-indigo-200 flex items-center justify-between gap-2.5">
+              <div className="p-3 rounded-2xl bg-[#FAF9F6] border border-slate-200 flex items-center justify-between gap-2.5">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <img
                     src={lockedGarment.image}
                     alt={lockedGarment.name}
-                    className="w-9 h-9 rounded-xl object-cover border border-indigo-300 shrink-0"
+                    className="w-10 h-10 rounded-xl object-cover border border-slate-200 shrink-0"
                   />
                   <div className="min-w-0">
                     <p className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-600">
@@ -2802,10 +2802,10 @@ export default function App() {
 
             {/* 1. ¿Para qué ocasión? */}
             <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                 1. ¿Qué plan tienes hoy?
               </label>
-              <div className="grid grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-3 gap-2">
                 {OCCASIONS.map((occ) => {
                   const Icon = occ.icon;
                   const active = selectedOccasion === occ.id;
@@ -2815,11 +2815,11 @@ export default function App() {
                       onClick={() => setSelectedOccasion(occ.id)}
                       className={`py-3 px-2 rounded-2xl font-bold text-xs flex flex-col items-center gap-1.5 border transition-all ${
                         active
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-500/20 scale-[1.02]'
-                          : 'bg-slate-50 text-slate-600 border-slate-200/80 hover:bg-slate-100'
+                          ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
+                          : 'bg-[#FAF9F6] text-slate-600 border-slate-200/80 hover:bg-slate-100'
                       }`}
                     >
-                      <Icon className={`w-5 h-5 ${active ? 'text-white' : 'text-indigo-500'}`} />
+                      <Icon className={`w-4 h-4 ${active ? 'text-white' : 'text-slate-500'}`} />
                       <span>{occ.label}</span>
                     </button>
                   );
@@ -2830,14 +2830,14 @@ export default function App() {
             {/* 2. Sensación térmica en 3 botones claros */}
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                   2. ¿Cuánto abrigo quieres?
                 </label>
-                <span className="text-[11px] font-semibold text-indigo-600">
+                <span className="text-[11px] font-semibold text-slate-600">
                   Clima actual: {temp}°C
                 </span>
               </div>
-              <div className="grid grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-3 gap-2">
                 {WARMTH_LEVELS.map((lvl) => {
                   const Icon = lvl.icon;
                   const active =
@@ -2849,16 +2849,18 @@ export default function App() {
                       key={lvl.value}
                       type="button"
                       onClick={() => setDesiredWarmth(lvl.value)}
-                      className={`p-2.5 rounded-2xl border text-left transition-all flex items-center gap-2.5 ${
+                      className={`p-2.5 rounded-2xl border text-left transition-all flex items-center gap-2 ${
                         active
-                          ? 'bg-indigo-50/80 border-indigo-500 text-indigo-950 ring-2 ring-indigo-500/20'
-                          : 'bg-slate-50 border-slate-200/80 text-slate-600 hover:bg-slate-100'
+                          ? 'bg-slate-900 border-slate-900 text-white shadow-sm'
+                          : 'bg-[#FAF9F6] border-slate-200/80 text-slate-600 hover:bg-slate-100'
                       }`}
                     >
-                      <Icon className={`w-5 h-5 shrink-0 ${active ? 'text-indigo-600' : 'text-slate-400'}`} />
-                      <div>
-                        <p className="text-xs font-bold leading-tight">{lvl.label}</p>
-                        <p className="text-[10px] text-slate-400">{lvl.desc}</p>
+                      <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-amber-300' : 'text-slate-400'}`} />
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold leading-tight truncate">{lvl.label}</p>
+                        <p className={`text-[10px] truncate ${active ? 'text-slate-300' : 'text-slate-400'}`}>
+                          {lvl.desc}
+                        </p>
                       </div>
                     </button>
                   );
@@ -2870,12 +2872,12 @@ export default function App() {
             <button
               onClick={() => generateOutfit()}
               disabled={generating}
-              className="w-full py-4 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 active:scale-[0.99] text-white font-bold rounded-2xl text-sm flex justify-center items-center gap-2 shadow-lg shadow-indigo-600/25 transition-all"
+              className="w-full py-3.5 bg-slate-900 hover:bg-indigo-600 active:scale-[0.99] text-white font-bold rounded-2xl text-xs flex justify-center items-center gap-2 shadow-md transition-all"
             >
               {generating ? (
-                <RefreshCw className="w-5 h-5 animate-spin" />
+                <RefreshCw className="w-4 h-4 animate-spin" />
               ) : (
-                <Sparkles className="w-5 h-5" />
+                <Sparkles className="w-4 h-4 text-amber-300" />
               )}
               <span>
                 {generating
@@ -2889,25 +2891,25 @@ export default function App() {
 
           {/* Resultado del Outfit */}
           {currentOutfit ? (
-            <section className="bg-white p-5 rounded-3xl shadow-sm border border-slate-200/70 space-y-5">
+            <section className="bg-white p-5 rounded-3xl shadow-[0_2px_16px_-4px_rgba(15,23,42,0.05)] border border-slate-200/80 space-y-4">
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="text-base font-extrabold text-slate-900">Tu Look Recomendado</h3>
-                  <p className="text-xs text-slate-500">
-                    Pulsa el icono 🔄 en cualquier prenda si quieres cambiar solo esa pieza
+                  <h3 className="text-sm font-extrabold text-slate-900">Tu Look Recomendado</h3>
+                  <p className="text-[11px] text-slate-500">
+                    Toca 🔄 en cualquier prenda para cambiar solo esa pieza
                   </p>
                 </div>
                 <button
                   onClick={() => generateOutfit()}
-                  className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-xl text-xs font-bold flex items-center gap-1"
+                  className="px-3 py-1.5 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-full text-xs font-bold flex items-center gap-1 transition-colors"
                   title="Generar otra combinación completa"
                 >
-                  <RefreshCw className="w-4 h-4" /> Otro
+                  <RefreshCw className="w-3.5 h-3.5" /> Otro
                 </button>
               </div>
 
-              {/* Grid de Prendas del Outfit */}
-              <div className="grid grid-cols-2 gap-3.5">
+              {/* Grid Editorial de Prendas del Outfit (Proporción Vertical 4:5) */}
+              <div className="grid grid-cols-2 gap-3">
                 {currentOutfit.map((item) => {
                   const slot = getSlotFromType(item.subcategory, item.category);
                   const typeLabel =
@@ -2918,29 +2920,35 @@ export default function App() {
                   return (
                     <div
                       key={item.id}
-                      className="bg-slate-50 rounded-2xl overflow-hidden border border-slate-200/80 relative group flex flex-col"
+                      className="bg-white rounded-2xl overflow-hidden border border-slate-200/80 relative group flex flex-col shadow-sm"
                     >
-                      <div className="relative">
+                      <div className="relative aspect-[4/5] bg-[#F4F3EF]">
                         <img
                           src={item.image}
                           alt={item.name}
-                          className="w-full h-36 object-cover"
+                          className="w-full h-full object-cover"
                         />
                         <button
                           type="button"
                           onClick={() => swapSingleOutfitItem(slot, item.id)}
                           title="Cambiar solo esta prenda"
-                          className="absolute top-2 right-2 bg-white/90 hover:bg-indigo-600 text-slate-700 hover:text-white p-1.5 rounded-xl shadow-md transition-colors"
+                          className="absolute top-2.5 right-2.5 bg-white/95 hover:bg-slate-900 text-slate-700 hover:text-white p-1.5 rounded-full shadow-sm border border-slate-200/60 transition-colors"
                         >
                           <RefreshCw className="w-3.5 h-3.5" />
                         </button>
-                        <span className="absolute bottom-2 left-2 bg-white/95 text-slate-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm">
+                        <span className="absolute bottom-2 left-2 bg-white/95 backdrop-blur-md text-slate-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm border border-slate-200/60">
                           {typeLabel}
                         </span>
                       </div>
-                      <div className="p-3">
-                        <p className="text-xs font-bold text-slate-800 truncate">{item.name}</p>
-                        <p className="text-[11px] text-slate-500">{item.color}</p>
+                      <div className="p-2.5">
+                        <p className="text-xs font-bold text-slate-900 truncate">{item.name}</p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span
+                            className="w-2.5 h-2.5 rounded-full border border-slate-300 shrink-0"
+                            style={{ backgroundColor: getColorHex(item.color) }}
+                          />
+                          <p className="text-[11px] text-slate-500 truncate">{item.color}</p>
+                        </div>
                       </div>
                     </div>
                   );
@@ -3188,20 +3196,20 @@ export default function App() {
           VISTA 1.5: CALENDARIO / PLANIFICADOR SEMANAL DE OUTFITS ("SEMANA")
       ====================================================================== */}
       {activeTab === 'planner' && (
-        <main className="p-5 flex-1 space-y-4">
-          {/* Cabecera Editorial del Planificador Semanal */}
-          <section className="bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 rounded-3xl p-5 border border-slate-700/70 shadow-xl space-y-4 text-slate-100">
+        <main className="p-4 flex-1 space-y-4">
+          {/* Cabecera Editorial Limpia del Planificador Semanal */}
+          <section className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-[0_2px_16px_-4px_rgba(15,23,42,0.05)] space-y-4">
             <div className="flex justify-between items-start gap-3">
               <div>
-                <h2 className="text-base font-extrabold text-white flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-indigo-400" />
+                <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2 tracking-tight">
+                  <Calendar className="w-5 h-5 text-indigo-600" />
                   <span>Calendario Semanal</span>
                 </h2>
-                <p className="text-xs text-slate-300 mt-0.5">
+                <p className="text-xs text-slate-500 mt-0.5">
                   {plannedDaysCount} de 7 días planificados sin repetir parte superior seguida
                 </p>
               </div>
-              <span className="px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
+              <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/70 shrink-0">
                 {plannedDaysCount}/7 días
               </span>
             </div>
@@ -3209,14 +3217,14 @@ export default function App() {
             <button
               type="button"
               onClick={generateFullWeekPlan}
-              className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-500 hover:opacity-95 text-white font-extrabold text-xs shadow-lg shadow-indigo-500/25 flex items-center justify-center gap-2 transition-all active:scale-[0.99]"
+              className="w-full py-3 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-md shadow-slate-900/10 flex items-center justify-center gap-2 transition-all active:scale-[0.99]"
             >
-              <Sparkles className="w-4 h-4" />
+              <Sparkles className="w-4 h-4 text-amber-300" />
               <span>Generar Semana Completa con IA</span>
             </button>
 
-            {/* Cinta de Días Lunes a Domingo */}
-            <div className="grid grid-cols-7 gap-1.5 bg-slate-900/90 p-2 rounded-2xl border border-slate-800">
+            {/* Cinta de Días Lunes a Domingo (Clean Studio) */}
+            <div className="grid grid-cols-7 gap-1.5 bg-[#FAF9F6] p-1.5 rounded-2xl border border-slate-200/80">
               {WEEK_DAYS.map(day => {
                 const isSelected = selectedDay === day.id;
                 const dayPlan = weeklyPlan[day.id];
@@ -3226,24 +3234,24 @@ export default function App() {
                     key={day.id}
                     type="button"
                     onClick={() => setSelectedDay(day.id)}
-                    className={`relative flex flex-col items-center justify-center py-2.5 rounded-xl text-xs font-extrabold transition-all ${
+                    className={`relative flex flex-col items-center justify-center py-2.5 rounded-xl text-xs font-bold transition-all ${
                       isSelected
-                        ? 'bg-gradient-to-b from-indigo-500 to-purple-600 text-white shadow-md shadow-indigo-500/30 scale-105'
+                        ? 'bg-slate-900 text-white shadow-sm'
                         : hasPlan
-                        ? 'bg-slate-800 text-slate-200 border border-indigo-500/30 hover:bg-slate-700/80'
-                        : 'bg-slate-800/40 text-slate-400 hover:bg-slate-800'
+                        ? 'bg-white text-slate-800 border border-slate-200/80 hover:border-slate-300'
+                        : 'text-slate-400 hover:bg-white/70 hover:text-slate-700'
                     }`}
                   >
                     <span>{day.id}</span>
                     <span
                       className={`mt-1 w-1.5 h-1.5 rounded-full ${
                         dayPlan?.completed
-                          ? 'bg-amber-400'
+                          ? 'bg-amber-500'
                           : hasPlan
                           ? isSelected
-                            ? 'bg-white'
-                            : 'bg-emerald-400'
-                          : 'bg-slate-700'
+                            ? 'bg-emerald-400'
+                            : 'bg-emerald-500'
+                          : 'bg-slate-200'
                       }`}
                     />
                   </button>
@@ -3262,24 +3270,24 @@ export default function App() {
             const activeOccasion = dayPlan?.occasion || dayMeta.defaultOccasion;
 
             return (
-              <section className="bg-slate-900 rounded-3xl p-5 border border-slate-800 shadow-lg space-y-4 text-slate-100">
-                <div className="flex flex-wrap justify-between items-center gap-2 border-b border-slate-800 pb-3">
+              <section className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-[0_2px_16px_-4px_rgba(15,23,42,0.05)] space-y-4">
+                <div className="flex flex-wrap justify-between items-center gap-2 border-b border-slate-100 pb-3">
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-extrabold text-white">{dayMeta.full}</h3>
+                      <h3 className="text-sm font-extrabold text-slate-900">{dayMeta.full}</h3>
                       {dayPlan?.completed && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                           ✓ Usado
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-[11px] text-slate-500">
                       Elige el tipo de ocasión para este día:
                     </p>
                   </div>
 
                   {/* Selector rápido de Ocasión del Día */}
-                  <div className="flex gap-1.5">
+                  <div className="flex gap-1.5 bg-[#FAF9F6] p-1 rounded-xl border border-slate-200/70">
                     {OCCASIONS.map(occ => {
                       const isOcc = activeOccasion === occ.id;
                       return (
@@ -3287,10 +3295,10 @@ export default function App() {
                           key={occ.id}
                           type="button"
                           onClick={() => generateSingleDayPlan(selectedDay, occ.id)}
-                          className={`px-2.5 py-1 rounded-xl text-[11px] font-bold border transition-all ${
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
                             isOcc
-                              ? 'bg-indigo-500/25 border-indigo-400 text-indigo-200'
-                              : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200'
+                              ? 'bg-slate-900 text-white shadow-xs'
+                              : 'text-slate-500 hover:text-slate-900'
                           }`}
                         >
                           {occ.id === 'Work' ? 'Trabajo' : occ.id === 'Going Out' ? 'Salir' : 'Deporte'}
@@ -3308,31 +3316,31 @@ export default function App() {
                         return (
                           <div
                             key={item.id}
-                            className="bg-slate-800/90 rounded-2xl overflow-hidden border border-slate-700/70 flex flex-col justify-between"
+                            className="bg-white rounded-2xl overflow-hidden border border-slate-200/80 shadow-xs flex flex-col justify-between"
                           >
-                            <div className="relative h-28 bg-slate-950">
+                            <div className="relative aspect-[4/5] bg-[#F4F3EF]">
                               <img
                                 src={item.image}
                                 alt={item.name}
-                                className={`w-full h-full object-cover ${item.inLaundry ? 'opacity-50' : ''}`}
+                                className={`w-full h-full object-cover ${item.inLaundry ? 'opacity-50 grayscale-[25%]' : ''}`}
                               />
-                              <span className="absolute bottom-1.5 left-2 px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-900/80 text-indigo-300 backdrop-blur-sm border border-white/10">
+                              <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white/90 text-slate-800 backdrop-blur-md border border-slate-200/60 shadow-2xs">
                                 {typeObj?.emoji} {typeObj?.singular || item.subcategory}
                               </span>
                               {item.inLaundry && (
-                                <span className="absolute top-1.5 right-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500 text-slate-950">
+                                <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500 text-white shadow-xs">
                                   En colada
                                 </span>
                               )}
                             </div>
                             <div className="p-2.5">
-                              <p className="text-xs font-bold text-slate-100 truncate">{item.name}</p>
+                              <p className="text-xs font-bold text-slate-900 truncate">{item.name}</p>
                               <div className="flex items-center gap-1.5 mt-0.5">
                                 <span
-                                  className="w-2.5 h-2.5 rounded-full ring-1 ring-white/20 shrink-0"
+                                  className="w-2.5 h-2.5 rounded-full ring-1 ring-slate-300 shrink-0"
                                   style={{ backgroundColor: getColorHex(item.color) }}
                                 />
-                                <span className="text-[10px] text-slate-400 truncate">{item.color}</span>
+                                <span className="text-[10px] text-slate-500 truncate">{item.color}</span>
                               </div>
                             </div>
                           </div>
@@ -3341,7 +3349,7 @@ export default function App() {
                     </div>
 
                     {dayPlan?.note && (
-                      <p className="text-xs text-indigo-200 bg-indigo-950/50 border border-indigo-800/50 rounded-2xl p-3">
+                      <p className="text-xs text-slate-700 bg-[#FAF9F6] border border-slate-200/80 rounded-2xl p-3 font-medium">
                         ✨ {dayPlan.note}
                       </p>
                     )}
@@ -3350,9 +3358,9 @@ export default function App() {
                       <button
                         type="button"
                         onClick={() => wearPlannedDayOutfit(selectedDay)}
-                        className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/20 transition-all"
+                        className="flex-1 py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all"
                       >
-                        <Check className="w-4 h-4" />
+                        <Check className="w-4 h-4 text-emerald-400" />
                         <span>Usar Hoy y Enviar a Colada</span>
                       </button>
 
@@ -3360,7 +3368,7 @@ export default function App() {
                         type="button"
                         onClick={() => generateSingleDayPlan(selectedDay)}
                         title="Regenerar look de este día"
-                        className="bg-slate-800 hover:bg-slate-700 text-slate-200 p-2.5 rounded-xl border border-slate-700 transition-colors"
+                        className="bg-slate-100 hover:bg-slate-200 text-slate-700 p-2.5 rounded-xl border border-slate-200/80 transition-colors"
                       >
                         <RefreshCw className="w-4 h-4" />
                       </button>
@@ -3369,7 +3377,7 @@ export default function App() {
                         type="button"
                         onClick={() => clearPlannedDay(selectedDay)}
                         title="Limpiar este día"
-                        className="bg-slate-800 hover:bg-rose-950 text-rose-400 p-2.5 rounded-xl border border-slate-700 transition-colors"
+                        className="bg-rose-50 hover:bg-rose-100 text-rose-600 p-2.5 rounded-xl border border-rose-200/60 transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -3377,22 +3385,22 @@ export default function App() {
                   </>
                 ) : (
                   <div className="text-center py-6 space-y-3">
-                    <p className="text-xs text-slate-400">
-                      Aún no has asignado ningún outfit para el <strong className="text-slate-200">{dayMeta.full}</strong>.
+                    <p className="text-xs text-slate-500">
+                      Aún no has asignado ningún outfit para el <strong className="text-slate-900">{dayMeta.full}</strong>.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-2 justify-center">
                       <button
                         type="button"
                         onClick={() => generateSingleDayPlan(selectedDay)}
-                        className="py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-md transition-all"
+                        className="py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all"
                       >
-                        <Sparkles className="w-4 h-4" /> Sugerir Look para {dayMeta.full}
+                        <Sparkles className="w-4 h-4 text-amber-300" /> Sugerir Look para {dayMeta.full}
                       </button>
                       {currentOutfit && (
                         <button
                           type="button"
                           onClick={() => assignCurrentOutfitToDay(selectedDay)}
-                          className="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-indigo-500/30 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+                          className="py-2.5 px-4 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
                         >
                           <Check className="w-4 h-4" /> Asignar el Look de Hoy
                         </button>
@@ -3404,17 +3412,17 @@ export default function App() {
             );
           })()}
 
-          {/* Atajo directo a la nueva pestaña dedicada de Maleta de Viaje */}
-          <section className="bg-slate-900 rounded-3xl p-4 border border-slate-800 shadow-lg flex items-center justify-between gap-3 text-slate-100">
+          {/* Atajo directo a la pestaña dedicada de Maleta de Viaje */}
+          <section className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-xs flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300 shrink-0">
+              <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
                 <Briefcase className="w-5 h-5" />
               </div>
               <div className="min-w-0">
-                <h3 className="text-xs font-extrabold text-white truncate">
+                <h3 className="text-xs font-extrabold text-slate-900 truncate">
                   🧳 ¿Vas a hacer una escapada o viaje?
                 </h3>
-                <p className="text-[11px] text-slate-400 truncate">
+                <p className="text-[11px] text-slate-500 truncate">
                   Prepara tu maleta cápsula y checklist en la pestaña Viaje
                 </p>
               </div>
@@ -3422,7 +3430,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setActiveTab('travel')}
-              className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold shrink-0 transition-colors"
+              className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold shrink-0 transition-colors"
             >
               Ir a Viaje →
             </button>
@@ -3434,53 +3442,53 @@ export default function App() {
           VISTA 1.8: PESTAÑA DEDICADA "VIAJE" — MALETA CÁPSULA Y CHECKLIST IA
       ====================================================================== */}
       {activeTab === 'travel' && (
-        <main className="p-5 flex-1 space-y-4">
+        <main className="p-4 flex-1 space-y-4">
           {/* Cabecera Editorial de Maleta de Viaje */}
-          <section className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-5 border border-indigo-800/50 shadow-xl space-y-4 text-slate-100">
+          <section className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-[0_2px_16px_-4px_rgba(15,23,42,0.05)] space-y-4">
             <div className="flex justify-between items-start gap-3">
               <div>
-                <h2 className="text-base font-extrabold text-white flex items-center gap-2">
-                  <Briefcase className="w-5 h-5 text-indigo-400" />
-                  <span>🧳 Modo Viaje y Maleta Cápsula</span>
+                <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2 tracking-tight">
+                  <Briefcase className="w-5 h-5 text-indigo-600" />
+                  <span>Maleta Cápsula de Viaje</span>
                 </h2>
-                <p className="text-xs text-slate-300 mt-0.5">
-                  Viaja ligero con las prendas mínimas de tu armario que combinan todas entre sí
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Viaja ligero con las prendas clave de tu armario que combinan todas entre sí
                 </p>
               </div>
               {capsuleItems.length > 0 && (
-                <span className="px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 shrink-0">
-                  {packedItemIds.length}/{capsuleItems.length} en maleta
+                <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                  {packedItemIds.length}/{capsuleItems.length} listas
                 </span>
               )}
             </div>
 
             {/* Destino opcional */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-indigo-400" /> Destino o nombre del viaje (opcional)
+              <label className="text-[11px] font-bold text-slate-600 flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-indigo-600" /> Destino o nombre del viaje (opcional)
               </label>
               <input
                 type="text"
                 placeholder="Ej. Escapada a Madrid, Viaje de trabajo a Lisboa..."
                 value={tripName}
                 onChange={(e) => setTripName(e.target.value)}
-                className="w-full bg-slate-900/90 border border-slate-700 rounded-2xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-400"
+                className="w-full bg-[#FAF9F6] border border-slate-200/90 rounded-2xl px-3.5 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-slate-900 transition-colors"
               />
             </div>
 
             {/* Selector de Duración (Días) */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-300">1. ¿Cuántos días dura el viaje?</label>
+              <label className="text-[11px] font-bold text-slate-600">1. ¿Cuántos días dura el viaje?</label>
               <div className="grid grid-cols-5 gap-1.5">
                 {[2, 3, 5, 7, 10].map(d => (
                   <button
                     key={d}
                     type="button"
                     onClick={() => setTripDays(d)}
-                    className={`py-2 rounded-xl text-xs font-extrabold border transition-all ${
+                    className={`py-2 rounded-xl text-xs font-bold border transition-all ${
                       tripDays === d
-                        ? 'bg-indigo-600 text-white border-indigo-400 shadow-md shadow-indigo-500/25'
-                        : 'bg-slate-800/90 text-slate-300 border-slate-700 hover:bg-slate-800'
+                        ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                        : 'bg-[#FAF9F6] text-slate-600 border-slate-200/80 hover:bg-slate-100'
                     }`}
                   >
                     {d} días
@@ -3492,7 +3500,7 @@ export default function App() {
             {/* Selector de Clima en Destino y Estilo Principal */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-300">2. Clima en tu destino</label>
+                <label className="text-[11px] font-bold text-slate-600">2. Clima en tu destino</label>
                 <div className="grid grid-cols-3 gap-1.5">
                   {WARMTH_LEVELS.map(lvl => {
                     const active = tripWarmth === lvl.value;
@@ -3501,10 +3509,10 @@ export default function App() {
                         key={lvl.value}
                         type="button"
                         onClick={() => setTripWarmth(lvl.value)}
-                        className={`py-2 px-2 rounded-xl text-[11px] font-extrabold border transition-all ${
+                        className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all ${
                           active
-                            ? 'bg-indigo-600 text-white border-indigo-400'
-                            : 'bg-slate-800/90 text-slate-300 border-slate-700'
+                            ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                            : 'bg-[#FAF9F6] text-slate-600 border-slate-200/80 hover:bg-slate-100'
                         }`}
                       >
                         {lvl.label}
@@ -3515,17 +3523,17 @@ export default function App() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-300">3. Plan principal del viaje</label>
+                <label className="text-[11px] font-bold text-slate-600">3. Plan principal del viaje</label>
                 <div className="grid grid-cols-3 gap-1.5">
                   {OCCASIONS.map(occ => (
                     <button
                       key={occ.id}
                       type="button"
                       onClick={() => setTripOccasion(occ.id)}
-                      className={`py-2 px-2 rounded-xl text-[11px] font-extrabold border transition-all ${
+                      className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all ${
                         tripOccasion === occ.id
-                          ? 'bg-indigo-600 text-white border-indigo-400'
-                          : 'bg-slate-800/90 text-slate-300 border-slate-700'
+                          ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                          : 'bg-[#FAF9F6] text-slate-600 border-slate-200/80 hover:bg-slate-100'
                       }`}
                     >
                       {occ.id === 'Work' ? 'Trabajo' : occ.id === 'Going Out' ? 'Ocio/Salir' : 'Deporte'}
@@ -3538,9 +3546,9 @@ export default function App() {
             <button
               type="button"
               onClick={() => generateTravelCapsule(tripDays, tripOccasion, tripWarmth)}
-              className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-500 hover:opacity-95 text-white font-extrabold text-xs shadow-lg shadow-indigo-500/25 flex items-center justify-center gap-2 transition-all active:scale-[0.99]"
+              className="w-full py-3.5 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-md shadow-slate-900/10 flex items-center justify-center gap-2 transition-all active:scale-[0.99]"
             >
-              <Sparkles className="w-4 h-4" />
+              <Sparkles className="w-4 h-4 text-amber-300" />
               <span>
                 Generar Maleta Inteligente para {tripDays} días {tripName ? `en ${tripName}` : ''}
               </span>
@@ -3549,7 +3557,7 @@ export default function App() {
 
           {/* Checklist Interactivo de Maleta */}
           {capsuleItems.length > 0 ? (
-            <section className="bg-slate-900 rounded-3xl p-5 border border-slate-800 shadow-lg space-y-4 text-slate-100">
+            <section className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-[0_2px_16px_-4px_rgba(15,23,42,0.05)] space-y-4">
               {(() => {
                 const topsCount = capsuleItems.filter(
                   g => getSlotFromType(g.subcategory, g.category) === 'Top'
@@ -3562,12 +3570,12 @@ export default function App() {
 
                 return (
                   <>
-                    <div className="flex flex-wrap justify-between items-center gap-2 border-b border-slate-800 pb-3">
+                    <div className="flex flex-wrap justify-between items-center gap-2 border-b border-slate-100 pb-3">
                       <div>
-                        <h3 className="text-sm font-extrabold text-white">
+                        <h3 className="text-sm font-extrabold text-slate-900">
                           {tripName ? `🧳 Maleta para ${tripName}` : `🧳 Tu Checklist de Maleta (${tripDays} días)`}
                         </h3>
-                        <p className="text-[11px] text-indigo-300 font-semibold">
+                        <p className="text-[11px] text-indigo-600 font-semibold">
                           ✨ Con estas {capsuleItems.length} prendas creas hasta {outfitCombos} looks distintos
                         </p>
                       </div>
@@ -3580,29 +3588,29 @@ export default function App() {
                             setPackedItemIds(capsuleItems.map(c => String(c.id)));
                           }
                         }}
-                        className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-indigo-300 border border-slate-700 transition-colors"
+                        className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 transition-colors"
                       >
                         {packedItemIds.length === capsuleItems.length ? 'Desmarcar todo' : '✓ Marcar todas'}
                       </button>
                     </div>
 
                     {/* Barra de progreso de empacado */}
-                    <div className="space-y-1">
+                    <div className="space-y-1.5">
                       <div className="flex justify-between text-[11px] font-bold">
-                        <span className="text-slate-400">Progreso de tu maleta</span>
-                        <span className="text-emerald-400">
+                        <span className="text-slate-500">Progreso de tu maleta</span>
+                        <span className="text-emerald-600">
                           {packedItemIds.length} de {capsuleItems.length} prendas listas ({progressPct}%)
                         </span>
                       </div>
-                      <div className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
+                      <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-gradient-to-r from-indigo-500 to-emerald-400 transition-all duration-300"
+                          className="h-full bg-emerald-500 transition-all duration-300"
                           style={{ width: `${progressPct}%` }}
                         />
                       </div>
                     </div>
 
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-[11px] text-slate-500">
                       Toca cada prenda cuando la metas en la maleta o pulsa 🔄 si prefieres llevar otra:
                     </p>
 
@@ -3616,26 +3624,26 @@ export default function App() {
                             onClick={() => togglePackItem(item.id)}
                             className={`cursor-pointer rounded-2xl overflow-hidden border transition-all flex flex-col justify-between ${
                               isPacked
-                                ? 'bg-emerald-950/30 border-emerald-500/60 ring-1 ring-emerald-500/30'
-                                : 'bg-slate-800/90 border-slate-700/80 hover:border-indigo-500/50'
+                                ? 'bg-emerald-50/40 border-emerald-400 ring-1 ring-emerald-500/20'
+                                : 'bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs'
                             }`}
                           >
-                            <div className="relative h-28 bg-slate-950">
+                            <div className="relative aspect-[4/5] bg-[#F4F3EF]">
                               <img
                                 src={item.image}
                                 alt={item.name}
                                 className={`w-full h-full object-cover transition-opacity ${
-                                  isPacked ? 'opacity-80' : ''
+                                  isPacked ? 'opacity-85' : ''
                                 }`}
                               />
                               <span
-                                className={`absolute top-2 left-2 px-2 py-0.5 rounded-full text-[9px] font-extrabold ${
+                                className={`absolute top-2 left-2 px-2 py-0.5 rounded-full text-[9px] font-bold shadow-2xs ${
                                   isPacked
-                                    ? 'bg-emerald-500 text-slate-950'
-                                    : 'bg-slate-900/80 text-slate-200 border border-white/10'
+                                    ? 'bg-emerald-600 text-white'
+                                    : 'bg-white/90 text-slate-700 backdrop-blur-md border border-slate-200/70'
                                 }`}
                               >
-                                {isPacked ? '✓ En la maleta' : 'Pendiente'}
+                                {isPacked ? '✓ En maleta' : 'Pendiente'}
                               </span>
                               <button
                                 type="button"
@@ -3644,17 +3652,23 @@ export default function App() {
                                   swapCapsuleItem(item);
                                 }}
                                 title="Cambiar por otra prenda de tu armario"
-                                className="absolute top-2 right-2 p-1.5 rounded-xl bg-slate-900/85 hover:bg-indigo-600 text-slate-200 hover:text-white border border-white/10 transition-colors"
+                                className="absolute top-2 right-2 p-1.5 rounded-full bg-white/90 hover:bg-slate-900 text-slate-700 hover:text-white border border-slate-200/70 shadow-2xs transition-colors"
                               >
                                 <RefreshCw className="w-3.5 h-3.5" />
                               </button>
-                              <span className="absolute bottom-1.5 left-2 px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-900/80 text-indigo-300 backdrop-blur-sm">
+                              <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white/90 text-slate-800 backdrop-blur-md border border-slate-200/60">
                                 {typeObj?.emoji} {typeObj?.singular || item.subcategory}
                               </span>
                             </div>
                             <div className="p-2.5">
-                              <p className="text-xs font-bold text-slate-100 truncate">{item.name}</p>
-                              <p className="text-[10px] text-slate-400">{item.color}</p>
+                              <p className="text-xs font-bold text-slate-900 truncate">{item.name}</p>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span
+                                  className="w-2.5 h-2.5 rounded-full ring-1 ring-slate-300 shrink-0"
+                                  style={{ backgroundColor: getColorHex(item.color) }}
+                                />
+                                <p className="text-[10px] text-slate-500 truncate">{item.color}</p>
+                              </div>
                             </div>
                           </div>
                         );
@@ -3666,9 +3680,9 @@ export default function App() {
                       <button
                         type="button"
                         onClick={finishTripAndSendToLaundry}
-                        className="flex-1 py-3 px-4 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-500/20 transition-all"
+                        className="flex-1 py-3 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all"
                       >
-                        <WashingMachine className="w-4 h-4" />
+                        <WashingMachine className="w-4 h-4 text-emerald-400" />
                         <span>Fin del viaje: Enviar maleta a Colada (+1 uso)</span>
                       </button>
                       <button
@@ -3677,7 +3691,7 @@ export default function App() {
                           setCapsuleItems([]);
                           setPackedItemIds([]);
                         }}
-                        className="py-3 px-4 rounded-2xl bg-slate-800 hover:bg-rose-950 text-slate-300 hover:text-rose-300 text-xs font-bold border border-slate-700 transition-colors"
+                        className="py-3 px-4 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold border border-rose-200/70 transition-colors"
                       >
                         Vaciar maleta
                       </button>
@@ -3687,11 +3701,11 @@ export default function App() {
               })()}
             </section>
           ) : (
-            <div className="bg-white rounded-3xl p-8 text-center border border-slate-200/70 space-y-2">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto">
+            <div className="bg-white rounded-3xl p-8 text-center border border-slate-200/80 shadow-xs space-y-2">
+              <div className="w-12 h-12 rounded-2xl bg-[#FAF9F6] border border-slate-200/80 text-slate-700 flex items-center justify-center mx-auto">
                 <Briefcase className="w-6 h-6" />
               </div>
-              <p className="text-sm font-bold text-slate-800">Tu maleta inteligente está lista para empezar</p>
+              <p className="text-sm font-bold text-slate-900">Tu maleta inteligente está lista para empezar</p>
               <p className="text-xs text-slate-500">
                 Elige arriba los días, el clima de tu destino y el estilo del viaje para que la IA seleccione qué prendas meter en tu maleta.
               </p>
@@ -3701,54 +3715,54 @@ export default function App() {
       )}
 
       {/* =====================================================================
-          VISTA 2: MI ARMARIO (DISEÑO EDITORIAL, ANALÍTICA Y TARJETAS PREMIUM)
+          VISTA 2: MI ARMARIO (DISEÑO EDITORIAL CLEAN STUDIO & ANALÍTICA CPW)
       ====================================================================== */}
       {activeTab === 'closet' && (
-        <main className="p-5 flex-1 space-y-4">
+        <main className="p-4 flex-1 space-y-4">
           <div className="flex justify-between items-center">
             <div>
-              <h2 className="text-lg font-extrabold text-slate-900">Mi Armario</h2>
+              <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">Mi Armario</h2>
               <p className="text-xs text-slate-500">
                 Mostrando {filteredGarments.length} de {garments.length} prendas
               </p>
             </div>
             <button
               onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:opacity-95 text-white rounded-2xl text-xs font-bold shadow-md shadow-indigo-600/20 transition-all"
+              className="flex items-center gap-1.5 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl text-xs font-bold shadow-sm transition-all"
             >
-              <Camera className="w-4 h-4" /> + Añadir Prenda
+              <Camera className="w-4 h-4" /> + Añadir
             </button>
           </div>
 
-          {/* Barra Compacta de Analítica de Uso y Amortización (CPW) del Armario */}
+          {/* Barra Editorial Luminosa de Analítica de Uso y Amortización (CPW) */}
           {garments.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-900 text-slate-100 p-3 rounded-2xl border border-slate-800 shadow-sm">
-              <div className="bg-slate-800/80 rounded-xl p-2.5 border border-slate-700/70">
-                <p className="text-[10px] text-slate-400 font-bold uppercase">Uso Activo</p>
-                <p className="text-sm font-extrabold text-emerald-400 mt-0.5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div className="bg-white rounded-2xl p-3 border border-slate-200/80 shadow-2xs">
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Uso Activo</p>
+                <p className="text-base font-extrabold text-slate-900 mt-0.5">
                   {activeClosetPercent}%
                 </p>
-                <p className="text-[10px] text-slate-400 truncate">de tu armario</p>
+                <p className="text-[10px] text-slate-500 truncate">de tu armario</p>
               </div>
 
-              <div className="bg-slate-800/80 rounded-xl p-2.5 border border-slate-700/70">
-                <p className="text-[10px] text-slate-400 font-bold uppercase">Más Usada</p>
-                <p className="text-xs font-extrabold text-indigo-300 truncate mt-0.5">
+              <div className="bg-white rounded-2xl p-3 border border-slate-200/80 shadow-2xs">
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Más Usada</p>
+                <p className="text-xs font-extrabold text-slate-900 truncate mt-1">
                   {topWornGarment && (Number(topWornGarment.wearCount) || 0) > 0
                     ? topWornGarment.name
                     : 'Aún sin usos'}
                 </p>
-                <p className="text-[10px] text-slate-400">
+                <p className="text-[10px] text-indigo-600 font-semibold">
                   {topWornGarment ? `${Number(topWornGarment.wearCount) || 0} puestas` : '0 puestas'}
                 </p>
               </div>
 
-              <div className="bg-slate-800/80 rounded-xl p-2.5 border border-slate-700/70">
-                <p className="text-[10px] text-emerald-400 font-bold uppercase">Coste / Uso</p>
-                <p className="text-sm font-extrabold text-white mt-0.5">
+              <div className="bg-white rounded-2xl p-3 border border-slate-200/80 shadow-2xs">
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Coste / Uso</p>
+                <p className="text-base font-extrabold text-emerald-600 mt-0.5">
                   {averageCPW ? `${averageCPW} €` : '—'}
                 </p>
-                <p className="text-[10px] text-slate-400 truncate">media por puesta</p>
+                <p className="text-[10px] text-slate-500 truncate">media por puesta</p>
               </div>
 
               <button
@@ -3756,15 +3770,15 @@ export default function App() {
                 onClick={() =>
                   setSelectedFilter(selectedFilter === 'UNWORN' ? 'ALL' : 'UNWORN')
                 }
-                className={`rounded-xl p-2.5 border text-left transition-all ${
+                className={`rounded-2xl p-3 border text-left transition-all shadow-2xs ${
                   selectedFilter === 'UNWORN'
-                    ? 'bg-amber-500/20 border-amber-400 text-amber-200'
-                    : 'bg-slate-800/80 border-slate-700/70 hover:border-amber-500/50'
+                    ? 'bg-amber-50 border-amber-300 ring-1 ring-amber-400/30'
+                    : 'bg-white border-slate-200/80 hover:border-amber-300'
                 }`}
               >
-                <p className="text-[10px] text-amber-400 font-bold uppercase">Olvidadas</p>
-                <p className="text-sm font-extrabold text-white mt-0.5">{unwornCount}</p>
-                <p className="text-[10px] text-slate-400 truncate">
+                <p className="text-[10px] text-amber-600 font-bold uppercase tracking-wider">Olvidadas</p>
+                <p className="text-base font-extrabold text-slate-900 mt-0.5">{unwornCount}</p>
+                <p className="text-[10px] text-slate-500 truncate">
                   {selectedFilter === 'UNWORN' ? 'Ver todo ✕' : 'Filtrar 0 usos →'}
                 </p>
               </button>
@@ -3779,7 +3793,7 @@ export default function App() {
               placeholder="Buscar prenda por nombre, color o tipo..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white border border-slate-200/90 rounded-2xl pl-10 pr-9 py-2.5 text-xs text-slate-800 shadow-sm focus:outline-none focus:border-indigo-500"
+              className="w-full bg-white border border-slate-200/90 rounded-2xl pl-10 pr-9 py-2.5 text-xs text-slate-800 shadow-2xs focus:outline-none focus:border-slate-900 transition-colors"
             />
             {searchQuery && (
               <button
@@ -3796,10 +3810,10 @@ export default function App() {
           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
             <button
               onClick={() => setSelectedFilter('ALL')}
-              className={`px-3.5 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all ${
+              className={`px-3.5 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
                 selectedFilter === 'ALL'
-                  ? 'bg-slate-900 text-white shadow-sm'
-                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-100'
               }`}
             >
               Todo ({garments.length})
@@ -3808,21 +3822,21 @@ export default function App() {
             <button
               type="button"
               onClick={() => setSeasonFilterActive(!seasonFilterActive)}
-              className={`px-3.5 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1 ${
+              className={`px-3.5 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1 ${
                 seasonFilterActive
-                  ? 'bg-sky-600 text-white shadow-sm'
-                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-100'
               }`}
               title="Oculta automáticamente las prendas fuera de estación según el clima actual"
             >
-              <span>🌤️ Solo Temporada ({temp}°C)</span>
+              <span>🌤️ Temporada ({temp}°C)</span>
             </button>
             <button
               onClick={() => setSelectedFilter('UNWORN')}
-              className={`px-3.5 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1 ${
+              className={`px-3.5 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1 ${
                 selectedFilter === 'UNWORN'
-                  ? 'bg-amber-500 text-slate-950 shadow-sm'
-                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                  ? 'bg-amber-500 text-white shadow-xs'
+                  : 'bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-100'
               }`}
             >
               <span>✨ Olvidadas ({unwornCount})</span>
@@ -3835,16 +3849,16 @@ export default function App() {
                 <button
                   key={type.id}
                   onClick={() => setSelectedFilter(type.id)}
-                  className={`px-3.5 py-2 rounded-2xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-all ${
+                  className={`px-3.5 py-2 rounded-full text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-all ${
                     selectedFilter === type.id
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-100'
                   }`}
                 >
                   <span>{type.emoji}</span>
                   <span>{type.label}</span>
                   <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                    selectedFilter === type.id ? 'bg-indigo-500 text-white' : 'bg-slate-100 text-slate-500'
+                    selectedFilter === type.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
                   }`}>
                     {count}
                   </span>
@@ -3853,13 +3867,13 @@ export default function App() {
             })}
           </div>
 
-          {/* Listado Editorial de Prendas */}
+          {/* Listado Editorial Clean Studio de Prendas */}
           {filteredGarments.length === 0 ? (
-            <div className="bg-white rounded-3xl p-8 text-center border border-slate-200/70 space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto">
+            <div className="bg-white rounded-3xl p-8 text-center border border-slate-200/80 space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-[#FAF9F6] border border-slate-200/80 text-slate-700 flex items-center justify-center mx-auto">
                 <Camera className="w-6 h-6" />
               </div>
-              <p className="text-sm font-bold text-slate-800">
+              <p className="text-sm font-bold text-slate-900">
                 {selectedFilter === 'ALL' && !searchQuery
                   ? 'Tu armario está vacío'
                   : 'No hay prendas que coincidan con este filtro'}
@@ -3877,7 +3891,7 @@ export default function App() {
               ) : (
                 <button
                   onClick={() => setShowAddModal(true)}
-                  className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold"
+                  className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold"
                 >
                   Hacer foto a mi primera prenda
                 </button>
@@ -3888,214 +3902,159 @@ export default function App() {
               {filteredGarments.map((g) => {
                 const subcatId = g.subcategory || getDefaultSubcategory(g.category);
                 const typeObj = GARMENT_TYPES.find(t => t.id === subcatId);
+                const wears = Number(g.wearCount) || 0;
+                const hasPrice = Number(g.price) > 0;
+                const cpw = hasPrice ? (Number(g.price) / Math.max(1, wears)).toFixed(1) : null;
+                const isAmortized = hasPrice && wears > 0 && Number(cpw) <= 3;
+
                 return (
                   <div
                     key={g.id}
-                    className={`group relative bg-slate-800/95 backdrop-blur-sm rounded-3xl overflow-hidden border transition-all duration-300 flex flex-col justify-between shadow-lg hover:shadow-indigo-500/15 hover:-translate-y-0.5 ${
+                    className={`group bg-white rounded-2xl overflow-hidden border transition-all duration-200 flex flex-col justify-between shadow-[0_2px_10px_-3px_rgba(15,23,42,0.05)] hover:shadow-md ${
                       g.inLaundry
-                        ? 'border-amber-500/40 ring-1 ring-amber-500/20'
-                        : 'border-slate-700/80 hover:border-indigo-500/50'
+                        ? 'border-amber-300/80 bg-amber-50/10'
+                        : 'border-slate-200/80 hover:border-slate-300'
                     }`}
                   >
                     <div>
-                      {/* Cabecera Visual Editorial */}
-                      <div className="relative h-40 w-full overflow-hidden bg-slate-900">
+                      {/* Imagen Vertical Proporción Moda 4:5 sobre Fondo Estudio */}
+                      <div className="relative aspect-[4/5] w-full overflow-hidden bg-[#F4F3EF]">
                         <img
                           src={g.image}
                           alt={g.name}
-                          className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${
-                            g.inLaundry ? 'opacity-50 grayscale-[30%]' : ''
+                          className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-103 ${
+                            g.inLaundry ? 'opacity-55 grayscale-[25%]' : ''
                           }`}
                         />
-                        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-slate-900/90 via-slate-900/30 to-transparent pointer-events-none" />
 
-                        {/* Badge Flotante Estado */}
-                        <span
-                          className={`absolute top-2.5 left-2.5 text-[10px] font-bold px-2.5 py-0.5 rounded-full backdrop-blur-md shadow-sm flex items-center gap-1 ${
-                            g.inLaundry
-                              ? 'bg-amber-500/90 text-slate-950'
-                              : 'bg-emerald-500/85 text-white'
-                          }`}
-                        >
-                          {g.inLaundry && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-slate-950 animate-pulse" />
-                          )}
-                          {g.inLaundry ? 'En Colada' : 'Limpia'}
-                        </span>
+                        {/* Pill Superior Izquierda: En Colada (si está sucia) o Subcategoría */}
+                        {g.inLaundry ? (
+                          <span className="absolute top-2.5 left-2.5 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500 text-white shadow-xs flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                            En colada
+                          </span>
+                        ) : (
+                          <span className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white/90 text-slate-800 backdrop-blur-md border border-slate-200/60 shadow-2xs flex items-center gap-1">
+                            <span>{typeObj?.emoji}</span>
+                            <span className="truncate max-w-[82px]">{typeObj?.singular || subcatId}</span>
+                          </span>
+                        )}
 
-                        {/* Contador de Puestas / Usos */}
+                        {/* Pill Superior Derecha: Contador de Usos */}
                         <span
-                          className="absolute top-2.5 right-2.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-900/80 text-indigo-200 backdrop-blur-md border border-white/10"
+                          className="absolute top-2.5 right-2.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/90 text-slate-700 backdrop-blur-md border border-slate-200/60 shadow-2xs"
                           title={g.lastWornAt ? `Último uso: ${g.lastWornAt}` : 'Aún sin estrenar'}
                         >
-                          🔄 {Number(g.wearCount) || 0}
+                          {wears} {wears === 1 ? 'uso' : 'usos'}
                         </span>
 
-                        {/* Badge Flotante Subcategoría */}
-                        <span className="absolute bottom-2 left-2.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-900/80 text-slate-100 backdrop-blur-md border border-white/10 flex items-center gap-1">
-                          <span>{typeObj?.emoji}</span>
-                          <span>{typeObj?.singular || subcatId}</span>
-                        </span>
+                        {/* Botón Flotante Circular en Imagen para Combinar esta Prenda (Prenda Ancla) */}
+                        {!g.inLaundry && (
+                          <button
+                            type="button"
+                            onClick={() => combineWithGarment(g)}
+                            title="Crear outfit con esta prenda"
+                            className="absolute bottom-2.5 right-2.5 w-8 h-8 rounded-full bg-slate-900/90 hover:bg-indigo-600 text-white flex items-center justify-center shadow-md backdrop-blur-xs transition-all active:scale-95"
+                          >
+                            <Sparkles className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
 
-                      {/* Cuerpo Editorial de Metadatos */}
-                      <div className="p-3.5 space-y-2.5">
-                        <p className="text-xs font-extrabold text-slate-100 truncate tracking-tight">
+                      {/* Cuerpo Editorial Compacto y Limpio */}
+                      <div className="p-3 space-y-2">
+                        <p className="text-xs font-bold text-slate-900 truncate tracking-tight">
                           {g.name}
                         </p>
 
-                        {/* Fila Color (Swatch Real) + Abrigo Visual (1-5) */}
-                        <div className="flex items-center justify-between gap-2 text-[11px] text-slate-300">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span
-                              className="w-3 h-3 rounded-full shrink-0 ring-1 ring-white/25 shadow-inner"
-                              style={{ backgroundColor: getColorHex(g.color) }}
+                        {/* Fila Unificada: Color + Coste por Uso (CPW) interactivo */}
+                        {editingPriceId === g.id ? (
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              min="0"
+                              step="1"
+                              placeholder="Precio €"
+                              value={editingPriceVal}
+                              onChange={(e) => setEditingPriceVal(e.target.value)}
+                              className="w-full bg-[#FAF9F6] border border-slate-300 rounded-lg px-2 py-1 text-[11px] text-slate-900 focus:outline-none focus:border-slate-900"
                             />
-                            <span className="truncate font-semibold text-slate-300">{g.color}</span>
+                            <button
+                              type="button"
+                              onClick={() => saveGarmentPrice(g.id, editingPriceVal)}
+                              className="px-2 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-bold shrink-0"
+                            >
+                              OK
+                            </button>
                           </div>
-
-                          <div
-                            className="flex items-center gap-0.5 shrink-0 bg-slate-900/80 px-1.5 py-0.5 rounded-md border border-slate-700/70"
-                            title={`Nivel de abrigo: ${g.warmth || 3}/5`}
-                          >
-                            <Thermometer className="w-3 h-3 text-amber-400 mr-0.5" />
-                            {[1, 2, 3, 4, 5].map(level => (
+                        ) : (
+                          <div className="flex items-center justify-between gap-1.5 text-[11px]">
+                            <div className="flex items-center gap-1.5 min-w-0">
                               <span
-                                key={level}
-                                className={`w-1 h-2.5 rounded-full ${
-                                  level <= (g.warmth || 3) ? 'bg-amber-400' : 'bg-slate-700'
-                                }`}
+                                className="w-2.5 h-2.5 rounded-full shrink-0 ring-1 ring-slate-300"
+                                style={{ backgroundColor: getColorHex(g.color) }}
                               />
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Badges Compactos de Ocasión */}
-                        {Array.isArray(g.occasion) && g.occasion.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {g.occasion.map(occ => (
-                              <span
-                                key={occ}
-                                className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-slate-700/60 text-indigo-300 border border-slate-600/50"
-                              >
-                                {occ === 'Work' ? 'Trabajo' : occ === 'Going Out' ? 'Salir' : 'Deporte'}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Mejora 2: Coste por Uso (CPW) y Amortización de la Prenda */}
-                        <div className="flex items-center justify-between gap-1.5 pt-0.5">
-                          {editingPriceId === g.id ? (
-                            <div className="flex items-center gap-1 w-full">
-                              <input
-                                type="number"
-                                min="0"
-                                step="1"
-                                placeholder="Precio €"
-                                value={editingPriceVal}
-                                onChange={(e) => setEditingPriceVal(e.target.value)}
-                                className="w-full bg-slate-900 border border-indigo-500 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => saveGarmentPrice(g.id, editingPriceVal)}
-                                className="px-2 py-1 rounded-lg bg-emerald-500 text-slate-950 text-[10px] font-extrabold shrink-0"
-                              >
-                                OK
-                              </button>
+                              <span className="truncate font-medium text-slate-600">{g.color}</span>
                             </div>
-                          ) : Number(g.price) > 0 ? (
-                            (() => {
-                              const wears = Number(g.wearCount) || 0;
-                              const cpw = (Number(g.price) / Math.max(1, wears)).toFixed(1);
-                              const isAmortized = wears > 0 && Number(cpw) <= 3;
-                              return (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setEditingPriceId(g.id);
-                                    setEditingPriceVal(String(g.price || ''));
-                                  }}
-                                  title="Toca para editar el precio de compra"
-                                  className={`w-full py-1 px-2 rounded-lg border text-[10px] font-bold flex items-center justify-between transition-colors ${
-                                    isAmortized
-                                      ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
-                                      : 'bg-slate-900/70 border-slate-700/80 text-slate-300 hover:border-indigo-500/50'
-                                  }`}
-                                >
-                                  <span>💶 {cpw} € / uso</span>
-                                  <span className="text-[9px] opacity-80">
-                                    {isAmortized ? '🏆 Amortizada' : `${g.price}€`}
-                                  </span>
-                                </button>
-                              );
-                            })()
-                          ) : (
+
                             <button
                               type="button"
                               onClick={() => {
                                 setEditingPriceId(g.id);
-                                setEditingPriceVal('');
+                                setEditingPriceVal(hasPrice ? String(g.price) : '');
                               }}
-                              className="w-full py-1 px-2 rounded-lg bg-slate-900/50 hover:bg-slate-900 border border-dashed border-slate-700 text-[10px] font-semibold text-slate-400 hover:text-indigo-300 text-left transition-colors"
+                              title="Toca para editar el precio y ver su amortización"
+                              className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold shrink-0 border transition-colors ${
+                                isAmortized
+                                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                                  : hasPrice
+                                  ? 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300'
+                                  : 'bg-transparent border-dashed border-slate-200 text-slate-400 hover:text-slate-700'
+                              }`}
                             >
-                              + Añadir precio (€) para Coste/Uso
+                              {hasPrice ? `${cpw}€/uso` : '+ €'}
                             </button>
-                          )}
-                        </div>
-
-                        {/* Selector directo para reclasificar con 1 toque */}
-                        <select
-                          value={subcatId}
-                          onChange={(e) => changeGarmentSubcategory(g.id, e.target.value)}
-                          className="w-full bg-slate-900/85 hover:bg-slate-900 border border-slate-700/80 rounded-xl px-2.5 py-1.5 text-[11px] font-bold text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer transition-colors"
-                          title="Cambiar categoría de la prenda"
-                        >
-                          {GARMENT_TYPES.map(type => (
-                            <option key={type.id} value={type.id}>
-                              {type.emoji} {type.label}
-                            </option>
-                          ))}
-                        </select>
+                          </div>
+                        )}
                       </div>
                     </div>
 
-                    {/* Pie de Acciones: Combinar (Prenda Ancla), Colada y Eliminar */}
-                    <div className="px-3.5 pb-3.5 pt-1 space-y-1.5">
-                      {!g.inLaundry && (
-                        <button
-                          type="button"
-                          onClick={() => combineWithGarment(g)}
-                          className="w-full py-1.5 rounded-xl bg-indigo-600/90 hover:bg-indigo-500 text-white text-[11px] font-extrabold flex items-center justify-center gap-1 shadow-sm transition-all"
-                        >
-                          <Sparkles className="w-3 h-3" />
-                          <span>Combinar esta prenda</span>
-                        </button>
-                      )}
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => toggleLaundry(g.id)}
-                          className={`flex-1 py-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all ${
-                            g.inLaundry
-                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
-                              : 'bg-slate-700/70 text-slate-200 hover:bg-slate-700 border border-slate-600/50'
-                          }`}
-                        >
-                          <WashingMachine className="w-3.5 h-3.5" />
-                          <span>{g.inLaundry ? 'Lavar' : 'Colada'}</span>
-                        </button>
+                    {/* Pie Limpio de 1 sola fila: Selector de Categoría + Colada + Borrar */}
+                    <div className="px-3 pb-3 pt-1.5 border-t border-slate-100 flex items-center gap-1.5">
+                      <select
+                        value={subcatId}
+                        onChange={(e) => changeGarmentSubcategory(g.id, e.target.value)}
+                        className="flex-1 min-w-0 bg-[#FAF9F6] hover:bg-slate-100 border border-slate-200/80 rounded-lg px-2 py-1.5 text-[10px] font-semibold text-slate-700 focus:outline-none focus:border-slate-900 cursor-pointer truncate"
+                        title="Cambiar categoría de la prenda"
+                      >
+                        {GARMENT_TYPES.map(type => (
+                          <option key={type.id} value={type.id}>
+                            {type.emoji} {type.singular}
+                          </option>
+                        ))}
+                      </select>
 
-                        <button
-                          type="button"
-                          onClick={() => deleteGarment(g.id)}
-                          title="Eliminar prenda del armario"
-                          className="p-2 rounded-xl bg-rose-500/15 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/25 transition-all"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => toggleLaundry(g.id)}
+                        title={g.inLaundry ? 'Marcar como limpia' : 'Enviar a la colada'}
+                        className={`p-1.5 rounded-lg border transition-colors shrink-0 ${
+                          g.inLaundry
+                            ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                            : 'bg-[#FAF9F6] text-slate-500 border-slate-200/80 hover:text-slate-900 hover:bg-slate-100'
+                        }`}
+                      >
+                        <WashingMachine className="w-3.5 h-3.5" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => deleteGarment(g.id)}
+                        title="Eliminar prenda"
+                        className="p-1.5 rounded-lg bg-[#FAF9F6] hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200/80 hover:border-rose-200 transition-colors shrink-0"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
                 );
@@ -4109,10 +4068,10 @@ export default function App() {
           VISTA 3: CESTA DE LAVANDERÍA ("COLADA")
       ====================================================================== */}
       {activeTab === 'laundry' && (
-        <main className="p-5 flex-1 space-y-4">
+        <main className="p-4 flex-1 space-y-4">
           <div className="flex justify-between items-center">
             <div>
-              <h2 className="text-lg font-extrabold text-slate-900">Cesta de Colada</h2>
+              <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">Cesta de Colada</h2>
               <p className="text-xs text-slate-500">
                 {laundryCount === 0
                   ? 'Toda tu ropa está limpia'
@@ -4122,19 +4081,19 @@ export default function App() {
             {laundryCount > 0 && (
               <button
                 onClick={washAllLaundry}
-                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-bold shadow-sm transition-all flex items-center gap-1.5"
+                className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5"
               >
-                <Check className="w-4 h-4" /> Lavar Todo
+                <Check className="w-4 h-4 text-emerald-400" /> Lavar Todo
               </button>
             )}
           </div>
 
           {laundryCount === 0 ? (
-            <div className="bg-white rounded-3xl p-10 text-center border border-slate-200/70 space-y-2">
+            <div className="bg-white rounded-3xl p-10 text-center border border-slate-200/80 space-y-2">
               <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
                 <Check className="w-6 h-6" />
               </div>
-              <p className="text-sm font-bold text-slate-800">¡Todo limpio!</p>
+              <p className="text-sm font-bold text-slate-900">¡Todo limpio!</p>
               <p className="text-xs text-slate-500">
                 Todas tus prendas están disponibles para crear outfits.
               </p>
@@ -4144,13 +4103,13 @@ export default function App() {
               {garments.filter(g => g.inLaundry).map((g) => (
                 <div
                   key={g.id}
-                  className="p-3 bg-white rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between"
+                  className="p-3 bg-white rounded-2xl border border-slate-200/80 shadow-2xs flex items-center justify-between"
                 >
                   <div className="flex items-center gap-3">
-                    <img src={g.image} alt={g.name} className="w-12 h-12 rounded-xl object-cover" />
+                    <img src={g.image} alt={g.name} className="w-12 h-14 rounded-xl object-cover bg-[#F4F3EF]" />
                     <div>
-                      <p className="text-xs font-bold text-slate-800">{g.name}</p>
-                      <p className="text-[11px] text-slate-400">
+                      <p className="text-xs font-bold text-slate-900">{g.name}</p>
+                      <p className="text-[11px] text-slate-500">
                         {GARMENT_TYPES.find(t => t.id === g.subcategory)?.label || g.subcategory} • {g.color}
                       </p>
                     </div>
@@ -4172,11 +4131,11 @@ export default function App() {
           MODAL RÁPIDO PARA AÑADIR PRENDA CON CÁMARA EN SEGUNDOS (MODO RÁFAGA)
       ====================================================================== */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="bg-white rounded-t-3xl sm:rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <div>
-                <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2 tracking-tight">
                   <Camera className="w-5 h-5 text-indigo-600" /> Nueva Prenda
                 </h3>
                 <p className="text-[11px] text-slate-500">
@@ -4248,7 +4207,7 @@ export default function App() {
                       <button
                         type="button"
                         onClick={capturePhotoFromVideo}
-                        className="px-6 py-3 bg-indigo-600 text-white font-bold text-xs rounded-full shadow-lg flex items-center gap-2"
+                        className="px-6 py-3 bg-slate-900 text-white font-bold text-xs rounded-full shadow-lg flex items-center gap-2"
                       >
                         <Camera className="w-4 h-4" /> Capturar Foto
                       </button>
@@ -4263,7 +4222,7 @@ export default function App() {
                   </div>
                 ) : newGarment.image ? (
                   <div className="space-y-2">
-                    <div className="relative rounded-2xl overflow-hidden border border-slate-200">
+                    <div className="relative rounded-2xl overflow-hidden border border-slate-200 bg-[#F4F3EF]">
                       <img
                         src={newGarment.image}
                         alt="Prenda"
@@ -4301,7 +4260,7 @@ export default function App() {
                     </div>
 
                     {(analyzingPhoto || aiVisionBadge) && (
-                      <div className="px-3 py-2 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200/80 text-xs font-bold text-indigo-900 flex items-center gap-2">
+                      <div className="px-3 py-2 rounded-xl bg-[#FAF9F6] border border-slate-200/80 text-xs font-bold text-slate-800 flex items-center gap-2">
                         {analyzingPhoto ? (
                           <RefreshCw className="w-3.5 h-3.5 text-indigo-600 animate-spin shrink-0" />
                         ) : (
@@ -4317,22 +4276,22 @@ export default function App() {
                       <button
                         type="button"
                         onClick={() => startCamera()}
-                        className="p-5 bg-indigo-50 hover:bg-indigo-100 border-2 border-dashed border-indigo-300 rounded-2xl flex flex-col items-center justify-center gap-2 text-indigo-700 transition-all"
+                        className="p-5 bg-[#FAF9F6] hover:bg-slate-100 border border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center gap-2 text-slate-900 transition-all"
                       >
-                        <Camera className="w-7 h-7" />
+                        <Camera className="w-6 h-6 text-indigo-600" />
                         <span className="text-xs font-bold">Cámara en Vivo</span>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => nativeCameraInputRef.current?.click()}
-                        className="p-5 bg-slate-50 hover:bg-slate-100 border-2 border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center gap-2 text-slate-700 transition-all"
+                        className="p-5 bg-[#FAF9F6] hover:bg-slate-100 border border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center gap-2 text-slate-700 transition-all"
                       >
-                        <ImageIcon className="w-7 h-7 text-indigo-500" />
+                        <ImageIcon className="w-6 h-6 text-slate-600" />
                         <span className="text-xs font-bold">Móvil / Galería</span>
                       </button>
                     </div>
-                    <label className="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50 border border-slate-200/80 cursor-pointer">
+                    <label className="flex items-center justify-between px-3 py-2 rounded-xl bg-[#FAF9F6] border border-slate-200/80 cursor-pointer">
                       <span className="text-[11px] font-bold text-slate-700">
                         ✨ Encuadre y Fondo Limpio de Estudio automático
                       </span>
@@ -4340,7 +4299,7 @@ export default function App() {
                         type="checkbox"
                         checked={studioCutoutMode}
                         onChange={(e) => setStudioCutoutMode(e.target.checked)}
-                        className="w-4 h-4 rounded accent-indigo-600"
+                        className="w-4 h-4 rounded accent-slate-900"
                       />
                     </label>
                   </div>
@@ -4384,8 +4343,8 @@ export default function App() {
                         }}
                         className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center gap-2 border text-left transition-all ${
                           active
-                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                            ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                            : 'bg-[#FAF9F6] text-slate-700 border-slate-200/80 hover:bg-slate-100'
                         }`}
                       >
                         <span>{type.emoji}</span>
@@ -4412,8 +4371,8 @@ export default function App() {
                         onClick={() => setNewGarment(prev => ({ ...prev, color: c.name }))}
                         className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition-all ${
                           selected
-                            ? 'border-indigo-600 bg-indigo-50 text-indigo-900 ring-2 ring-indigo-500/20'
-                            : 'border-slate-200 bg-white text-slate-600'
+                            ? 'border-slate-900 bg-slate-900 text-white'
+                            : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
                         }`}
                       >
                         <span
@@ -4440,7 +4399,7 @@ export default function App() {
                     } ${newGarment.color}`}
                     value={newGarment.name}
                     onChange={(e) => setNewGarment(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500 focus:bg-white"
+                    className="w-full bg-[#FAF9F6] border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-slate-900 focus:bg-white"
                   />
                 </div>
                 <div className="space-y-1">
@@ -4454,7 +4413,7 @@ export default function App() {
                     placeholder="Ej: 39"
                     value={newGarment.price}
                     onChange={(e) => setNewGarment(prev => ({ ...prev, price: e.target.value }))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500 focus:bg-white"
+                    className="w-full bg-[#FAF9F6] border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-slate-900 focus:bg-white"
                   />
                 </div>
               </div>
@@ -4470,8 +4429,8 @@ export default function App() {
                       onClick={() => toggleNewGarmentOccasion(occ.id)}
                       className={`py-2 text-xs rounded-xl font-bold border transition-all ${
                         active
-                          ? 'bg-indigo-50 border-indigo-500 text-indigo-700'
-                          : 'bg-slate-50 border-slate-200 text-slate-400'
+                          ? 'bg-slate-900 border-slate-900 text-white'
+                          : 'bg-[#FAF9F6] border-slate-200 text-slate-500'
                       }`}
                     >
                       {occ.label}
@@ -4483,14 +4442,14 @@ export default function App() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
                   type="submit"
-                  className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl text-xs flex justify-center items-center gap-1.5 shadow-lg shadow-indigo-600/25 transition-all"
+                  className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-2xl text-xs flex justify-center items-center gap-1.5 shadow-md transition-all"
                 >
                   <Check className="w-4 h-4" /> Guardar Prenda
                 </button>
                 <button
                   type="button"
                   onClick={(e) => handleSaveGarment(e, true)}
-                  className="w-full py-3.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold rounded-2xl text-xs flex justify-center items-center gap-1.5 transition-all"
+                  className="w-full py-3.5 bg-[#FAF9F6] hover:bg-slate-100 text-slate-800 border border-slate-200 font-bold rounded-2xl text-xs flex justify-center items-center gap-1.5 transition-all"
                 >
                   <Camera className="w-4 h-4" /> Guardar y + Otra Foto
                 </button>
@@ -4501,33 +4460,33 @@ export default function App() {
       )}
 
       {/* =====================================================================
-          BARRA DE NAVEGACIÓN INFERIOR FLOTANTE Y MODERNA (CON PESTAÑA VIAJE)
+          BARRA DE NAVEGACIÓN INFERIOR SIMÉTRICA DE 6 COLUMNAS (SIN DESBORDES)
       ====================================================================== */}
-      <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 max-w-md w-[95%] bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xl shadow-slate-300/50 rounded-3xl flex justify-between items-center px-2 py-1.5 z-30">
+      <nav className="fixed bottom-3 left-1/2 -translate-x-1/2 max-w-md w-[94%] bg-white/95 backdrop-blur-xl border border-slate-200/90 shadow-[0_8px_30px_rgb(15,23,42,0.10)] rounded-full px-2 py-1.5 z-30 grid grid-cols-6 items-center">
         <button
           onClick={() => setActiveTab('generator')}
-          className={`flex flex-col items-center gap-0.5 px-2.5 py-2 rounded-2xl text-[10px] font-bold transition-all ${
+          className={`flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-full text-[10px] font-semibold transition-all ${
             activeTab === 'generator'
-              ? 'text-indigo-600 bg-indigo-50'
+              ? 'text-slate-900 font-extrabold'
               : 'text-slate-400 hover:text-slate-700'
           }`}
         >
-          <Sparkles className="w-4 h-4" />
+          <Sparkles className={`w-4 h-4 ${activeTab === 'generator' ? 'text-indigo-600' : ''}`} />
           <span>Hoy</span>
         </button>
 
         <button
           onClick={() => setActiveTab('planner')}
-          className={`flex flex-col items-center gap-0.5 px-2.5 py-2 rounded-2xl text-[10px] font-bold relative transition-all ${
+          className={`relative flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-full text-[10px] font-semibold transition-all ${
             activeTab === 'planner'
-              ? 'text-indigo-600 bg-indigo-50'
+              ? 'text-slate-900 font-extrabold'
               : 'text-slate-400 hover:text-slate-700'
           }`}
         >
-          <Calendar className="w-4 h-4" />
+          <Calendar className={`w-4 h-4 ${activeTab === 'planner' ? 'text-indigo-600' : ''}`} />
           <span>Semana</span>
           {plannedDaysCount > 0 && (
-            <span className="absolute top-1 right-1 w-3.5 h-3.5 bg-indigo-600 text-white text-[8px] font-extrabold rounded-full flex items-center justify-center">
+            <span className="absolute top-0.5 right-2 w-3.5 h-3.5 bg-slate-900 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
               {plannedDaysCount}
             </span>
           )}
@@ -4535,54 +4494,54 @@ export default function App() {
 
         <button
           onClick={() => setActiveTab('travel')}
-          className={`flex flex-col items-center gap-0.5 px-2.5 py-2 rounded-2xl text-[10px] font-bold relative transition-all ${
+          className={`relative flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-full text-[10px] font-semibold transition-all ${
             activeTab === 'travel'
-              ? 'text-indigo-600 bg-indigo-50'
+              ? 'text-slate-900 font-extrabold'
               : 'text-slate-400 hover:text-slate-700'
           }`}
         >
-          <Briefcase className="w-4 h-4" />
+          <Briefcase className={`w-4 h-4 ${activeTab === 'travel' ? 'text-indigo-600' : ''}`} />
           <span>Viaje</span>
           {capsuleItems.length > 0 && (
-            <span className="absolute top-1 right-1 w-3.5 h-3.5 bg-emerald-500 text-slate-950 text-[8px] font-extrabold rounded-full flex items-center justify-center">
+            <span className="absolute top-0.5 right-2 w-3.5 h-3.5 bg-emerald-600 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
               {capsuleItems.length}
             </span>
           )}
         </button>
 
-        {/* Botón Central Destacado de Cámara */}
+        {/* Botón Circular Editorial de Cámara */}
         <button
           onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-1 px-3 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold text-[11px] shadow-md shadow-indigo-500/30 hover:scale-105 transition-transform"
+          title="Añadir prenda con cámara"
+          className="w-10 h-10 mx-auto rounded-full bg-slate-900 hover:bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-slate-900/20 active:scale-95 transition-all"
         >
           <Camera className="w-4 h-4" />
-          <span>+ Foto</span>
         </button>
 
         <button
           onClick={() => setActiveTab('closet')}
-          className={`flex flex-col items-center gap-0.5 px-2.5 py-2 rounded-2xl text-[10px] font-bold transition-all ${
+          className={`flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-full text-[10px] font-semibold transition-all ${
             activeTab === 'closet'
-              ? 'text-indigo-600 bg-indigo-50'
+              ? 'text-slate-900 font-extrabold'
               : 'text-slate-400 hover:text-slate-700'
           }`}
         >
-          <Shirt className="w-4 h-4" />
+          <Shirt className={`w-4 h-4 ${activeTab === 'closet' ? 'text-indigo-600' : ''}`} />
           <span>Armario</span>
         </button>
 
         <button
           onClick={() => setActiveTab('laundry')}
-          className={`flex flex-col items-center gap-0.5 px-2.5 py-2 rounded-2xl text-[10px] font-bold relative transition-all ${
+          className={`relative flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-full text-[10px] font-semibold transition-all ${
             activeTab === 'laundry'
-              ? 'text-indigo-600 bg-indigo-50'
+              ? 'text-slate-900 font-extrabold'
               : 'text-slate-400 hover:text-slate-700'
           }`}
         >
-          <WashingMachine className="w-4 h-4" />
+          <WashingMachine className={`w-4 h-4 ${activeTab === 'laundry' ? 'text-indigo-600' : ''}`} />
           <span>Colada</span>
           {laundryCount > 0 && (
-            <span className="absolute top-1 right-1 w-3.5 h-3.5 bg-amber-500 text-white text-[8px] font-extrabold rounded-full flex items-center justify-center">
+            <span className="absolute top-0.5 right-2 w-3.5 h-3.5 bg-amber-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
               {laundryCount}
             </span>
           )}
