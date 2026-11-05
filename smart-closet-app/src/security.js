@@ -50,16 +50,11 @@ export const getOrCreateUserSalt = (username) => {
 };
 
 /**
- * Deriva un hash irreversible PBKDF2-SHA256 de la contraseña para no guardar nunca contraseñas en texto plano.
+ * Deriva los bits PBKDF2-SHA256 (100.000 iteraciones, 256 bits) para una contraseña y un salt dados.
+ * Devuelve el resultado en base64.
  */
-export const hashPasswordSecure = async (password, username) => {
-  if (!password) return '';
-  if (!window.crypto?.subtle) {
-    // Fallback básico si el navegador no está en contexto HTTPS/localhost
-    return `legacy_${btoa(encodeURIComponent(password))}`;
-  }
+const derivePbkdf2 = async (password, salt) => {
   const enc = new TextEncoder();
-  const salt = getOrCreateUserSalt(username);
   const keyMaterial = await window.crypto.subtle.importKey(
     'raw',
     enc.encode(password),
@@ -77,17 +72,91 @@ export const hashPasswordSecure = async (password, username) => {
     keyMaterial,
     256
   );
-  return `pbkdf2$${salt}$${bufToBase64(derivedBits)}`;
+  return bufToBase64(derivedBits);
+};
+
+/**
+ * Comparación de cadenas de longitud fija (bucle XOR) para no filtrar información por tiempos.
+ */
+const constantTimeEqual = (a, b) => {
+  const strA = String(a ?? '');
+  const strB = String(b ?? '');
+  const len = Math.max(strA.length, strB.length);
+  let diff = strA.length ^ strB.length;
+  for (let i = 0; i < len; i++) {
+    diff |= (strA.charCodeAt(i) || 0) ^ (strB.charCodeAt(i) || 0);
+  }
+  return diff === 0;
+};
+
+/**
+ * Deriva un hash irreversible PBKDF2-SHA256 de la contraseña para no guardar nunca contraseñas en texto plano.
+ */
+export const hashPasswordSecure = async (password, username) => {
+  if (!password) return '';
+  if (!window.crypto?.subtle) {
+    // Fallback básico si el navegador no está en contexto HTTPS/localhost
+    return `legacy_${btoa(encodeURIComponent(password))}`;
+  }
+  const salt = getOrCreateUserSalt(username);
+  const hash = await derivePbkdf2(password, salt);
+  return `pbkdf2$${salt}$${hash}`;
+};
+
+/**
+ * Restaura la clave de salt del usuario en localStorage si falta o difiere del salt embebido en su hash
+ * (la bóveda AES-GCM del perfil depende de ese mismo salt).
+ */
+const restoreUserSalt = (username, salt) => {
+  const safeUser = (username || 'default').toLowerCase();
+  const key = `smart_closet_salt_${safeUser}`;
+  try {
+    if (localStorage.getItem(key) !== salt) {
+      localStorage.setItem(key, salt);
+    }
+  } catch (e) {
+    console.warn('No se pudo restaurar el salt del usuario en este dispositivo:', e);
+  }
+  memorySaltFallback[safeUser] = salt;
 };
 
 /**
  * Verifica una contraseña contra el hash almacenado (con migración transparente si era texto plano antiguo).
+ * Usa el salt EMBEBIDO en el hash, de modo que la pérdida de `smart_closet_salt_<user>` no bloquea la cuenta.
  */
 export const verifyPasswordSecure = async (inputPassword, storedUser) => {
   if (!storedUser.passwordHash && !storedUser.password) return true;
   if (storedUser.passwordHash) {
-    const computed = await hashPasswordSecure(inputPassword, storedUser.username);
-    return computed === storedUser.passwordHash;
+    const stored = String(storedUser.passwordHash);
+    const input = inputPassword || '';
+
+    if (stored.startsWith('pbkdf2$')) {
+      const parts = stored.split('$');
+      if (parts.length !== 3 || !parts[1] || !parts[2]) return false;
+      const [, embeddedSalt, storedHash] = parts;
+      if (!input || !window.crypto?.subtle) return false;
+      try {
+        const computed = await derivePbkdf2(input, embeddedSalt);
+        const ok = constantTimeEqual(computed, storedHash);
+        if (ok) restoreUserSalt(storedUser.username, embeddedSalt);
+        return ok;
+      } catch (e) {
+        console.warn('Error al verificar la contraseña:', e);
+        return false;
+      }
+    }
+
+    if (stored.startsWith('legacy_')) {
+      let computed;
+      try {
+        computed = `legacy_${btoa(encodeURIComponent(input))}`;
+      } catch {
+        return false;
+      }
+      return constantTimeEqual(computed, stored);
+    }
+
+    return false;
   }
   // Retrocompatibilidad con cuentas creadas antes del cifrado PBKDF2
   return storedUser.password === inputPassword;

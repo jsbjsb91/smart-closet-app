@@ -46,7 +46,12 @@ import {
   Moon,
   Heart,
   CloudRain,
-  RotateCcw
+  RotateCcw,
+  Eye,
+  EyeOff,
+  Mail,
+  Send,
+  AlertCircle
 } from 'lucide-react';
 import {
   hashPasswordSecure,
@@ -54,6 +59,15 @@ import {
   encryptSensitiveProfile,
   decryptSensitiveProfile
 } from './security';
+import {
+  isFirebaseConfigured,
+  registerWithEmail,
+  loginWithEmail,
+  loginWithGoogle,
+  resetPassword,
+  resendVerificationEmail,
+  logoutFirebase
+} from './firebase';
 
 // Clasificaciones detalladas de prendas
 const GARMENT_TYPES = [
@@ -290,6 +304,14 @@ export default function App() {
   const [authMode, setAuthMode] = useState('login');
   const [authUsername, setAuthUsername] = useState('');
   const [authPassword, setAuthPassword] = useState('');
+  const [authPasswordConfirm, setAuthPasswordConfirm] = useState('');
+  const [authEmail, setAuthEmail] = useState('');
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotMsg, setForgotMsg] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
+  const [emailNotice, setEmailNotice] = useState('');
+  const [showAuthPassword, setShowAuthPassword] = useState(false);
   const [authName, setAuthName] = useState('');
   const [authGender, setAuthGender] = useState('hombre'); // 'hombre' | 'mujer'
   const [authBirthDate, setAuthBirthDate] = useState('');
@@ -590,6 +612,7 @@ export default function App() {
     // Si el usuario tiene contraseña o activó protección en acceso rápido, pedir contraseña
     if (userObj.requirePinOnQuickLogin && (userObj.passwordHash || userObj.password)) {
       setAuthMode('login');
+      setAuthPasswordConfirm('');
       setAuthUsername(userObj.username);
       setAuthError('Por tu seguridad, introduce tu contraseña para desbloquear tu perfil.');
       return;
@@ -738,6 +761,39 @@ export default function App() {
         setAuthError('Por seguridad, crea una contraseña de al menos 4 caracteres para cifrar tus datos.');
         return;
       }
+      if (authPassword !== authPasswordConfirm) {
+        setAuthError('Las contraseñas no coinciden. Revísalas antes de crear tu armario.');
+        return;
+      }
+
+      // Si Firebase está configurado y hay correo, registrar en Firebase y mandar correo de confirmación
+      let firebaseUid = '';
+      if (isFirebaseConfigured() && authEmail.trim()) {
+        try {
+          setAuthLoading(true);
+          const fbUser = await registerWithEmail(authEmail.trim(), authPassword, authName.trim() || authUsername.trim());
+          firebaseUid = fbUser?.uid || '';
+          setEmailNotice(`Te hemos enviado un correo de confirmación a ${fbUser.email}. Revisa tu bandeja de entrada o spam.`);
+          showToast('¡Cuenta creada! Revisa tu correo');
+        } catch (fbErr) {
+          console.error('Error Firebase register:', fbErr);
+          if (fbErr.code === 'auth/email-already-in-use') {
+            setAuthError('Ese correo ya está registrado en Firebase. Inicia sesión o recupera tu contraseña.');
+            setAuthLoading(false);
+            return;
+          } else if (fbErr.code === 'auth/weak-password') {
+            setAuthError('Por seguridad del servidor, la contraseña debe tener al menos 6 caracteres.');
+            setAuthLoading(false);
+            return;
+          } else if (fbErr.code === 'auth/invalid-email') {
+            setAuthError('El formato del correo electrónico no es válido.');
+            setAuthLoading(false);
+            return;
+          }
+        } finally {
+          setAuthLoading(false);
+        }
+      }
 
       const passwordHash = await hashPasswordSecure(authPassword, usernameClean);
       const sensitiveData = {
@@ -751,6 +807,8 @@ export default function App() {
       const newUser = {
         username: usernameClean,
         name: authName.trim() || authUsername.trim(),
+        email: authEmail.trim(),
+        uid: firebaseUid,
         passwordHash,
         encryptedVault,
         requirePinOnQuickLogin,
@@ -759,16 +817,24 @@ export default function App() {
       const updated = [...users, newUser];
       try {
         localStorage.setItem('smart_closet_users', JSON.stringify(updated));
+      } catch (err) {
+        console.error('Error guardando nuevo usuario:', err);
+        setAuthError('No se ha podido guardar tu cuenta en este dispositivo: el almacenamiento está lleno. Libera espacio (borra prendas o cuentas antiguas) e inténtalo de nuevo.');
+        return;
+      }
+      try {
         const initialCloset = includeSampleCloset ? INITIAL_GARMENTS : [];
         localStorage.setItem(`smart_closet_garments_${usernameClean}`, JSON.stringify(initialCloset));
       } catch (err) {
-        console.error('Error guardando nuevo usuario:', err);
+        console.warn('No se pudo guardar el armario inicial del nuevo usuario:', err);
       }
       setSavedUsers(updated);
       
       const sessionUser = {
         username: newUser.username,
         name: newUser.name,
+        email: newUser.email || '',
+        uid: newUser.uid || '',
         encryptedVault,
         ...sensitiveData,
         requirePinOnQuickLogin,
@@ -780,10 +846,34 @@ export default function App() {
       setCurrentOutfit(null);
       setLockedGarment(null);
       setAuthPassword('');
+      setAuthPasswordConfirm('');
+      setAuthEmail('');
+      setShowAuthPassword(false);
     } else {
-      const found = users.find(u => u.username === usernameClean);
+      if (isFirebaseConfigured() && (authEmail.trim() || usernameClean.includes('@'))) {
+        const loginTargetEmail = authEmail.trim() || usernameClean;
+        try {
+          setAuthLoading(true);
+          await loginWithEmail(loginTargetEmail, authPassword);
+        } catch (fbErr) {
+          console.error('Error Firebase login:', fbErr);
+          if (fbErr.code === 'auth/invalid-credential' || fbErr.code === 'auth/wrong-password' || fbErr.code === 'auth/user-not-found') {
+            setAuthError('Correo o contraseña incorrectos.');
+            setAuthLoading(false);
+            return;
+          }
+        } finally {
+          setAuthLoading(false);
+        }
+      }
+
+      const found = users.find(u => u.username === usernameClean || (u.email && u.email.toLowerCase() === usernameClean));
       if (!found) {
         setAuthError('Usuario no encontrado. ¿Quieres crear una cuenta nueva?');
+        return;
+      }
+      if ((found.passwordHash || found.password) && !authPassword) {
+        setAuthError('Introduce tu contraseña.');
         return;
       }
       const isValid = await verifyPasswordSecure(authPassword, found);
@@ -834,11 +924,97 @@ export default function App() {
       setCurrentOutfit(null);
       setLockedGarment(null);
       setAuthPassword('');
+      setAuthPasswordConfirm('');
+      setAuthEmail('');
+      setShowAuthPassword(false);
     }
   };
 
-  const handleLogout = () => {
+  const handleGoogleSignIn = async () => {
+    setAuthError('');
+    try {
+      setAuthLoading(true);
+      const gUser = await loginWithGoogle();
+      const email = gUser.email || '';
+      const name = gUser.displayName || email.split('@')[0] || 'Usuario';
+      const usernameClean = (email.split('@')[0] || gUser.uid.slice(0, 8)).toLowerCase().replace(/[^a-z0-9_]/g, '');
+
+      const users = getUsers();
+      let found = users.find(u => u.username === usernameClean || (u.email && u.email.toLowerCase() === email.toLowerCase()));
+      if (!found) {
+        const sensitiveData = {
+          gender: 'hombre',
+          birthDate: '',
+          heightCm: '',
+          weightKg: ''
+        };
+        const encryptedVault = await encryptSensitiveProfile(usernameClean, sensitiveData);
+        found = {
+          username: usernameClean,
+          name,
+          email,
+          uid: gUser.uid,
+          photoURL: gUser.photoURL || '',
+          encryptedVault,
+          createdAt: new Date().toISOString()
+        };
+        const updated = [...users, found];
+        localStorage.setItem('smart_closet_users', JSON.stringify(updated));
+        const initialCloset = INITIAL_GARMENTS;
+        localStorage.setItem(`smart_closet_garments_${usernameClean}`, JSON.stringify(initialCloset));
+        setSavedUsers(updated);
+      }
+
+      const sessionUser = {
+        username: found.username,
+        name: found.name,
+        email,
+        uid: gUser.uid,
+        photoURL: gUser.photoURL || '',
+        encryptedVault: found.encryptedVault,
+        gender: found.gender || 'hombre',
+        birthDate: found.birthDate || '',
+        heightCm: found.heightCm ?? '',
+        weightKg: found.weightKg ?? '',
+        encrypted: true,
+        _decryptedInMemory: true
+      };
+      persistEncryptedSessionUser(sessionUser);
+      setCurrentUser(sessionUser);
+      setCurrentOutfit(null);
+      setLockedGarment(null);
+      showToast(`¡Bienvenido, ${name}!`);
+    } catch (err) {
+      console.error('Error Google Sign-In:', err);
+      if (err.code !== 'auth/popup-closed-by-user') {
+        setAuthError('No se pudo iniciar sesión con Google. Inténtalo de nuevo.');
+      }
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleSendResetPassword = async (e) => {
+    e.preventDefault();
+    setForgotMsg('');
+    if (!forgotEmail.trim()) {
+      setForgotMsg('Introduce tu correo electrónico.');
+      return;
+    }
+    try {
+      await resetPassword(forgotEmail.trim());
+      setForgotMsg('¡Correo enviado! Revisa tu bandeja de entrada o spam para restablecer tu contraseña.');
+    } catch (err) {
+      console.error('Error reset password:', err);
+      setForgotMsg('No se pudo enviar el correo. Comprueba que la dirección esté registrada.');
+    }
+  };
+
+  const handleLogout = async () => {
     stopCamera();
+    try {
+      await logoutFirebase();
+    } catch {}
     try {
       localStorage.removeItem('smart_closet_current_user');
     } catch {}
@@ -847,6 +1023,9 @@ export default function App() {
     setLockedGarment(null);
     setAuthUsername('');
     setAuthPassword('');
+    setAuthPasswordConfirm('');
+    setAuthEmail('');
+    setShowAuthPassword(false);
     setAuthError('');
   };
 
@@ -2424,7 +2603,7 @@ export default function App() {
           <div className="grid grid-cols-2 gap-1.5 bg-slate-100 p-1.5 rounded-2xl">
             <button
               type="button"
-              onClick={() => { setAuthMode('login'); setAuthError(''); }}
+              onClick={() => { setAuthMode('login'); setAuthError(''); setAuthPasswordConfirm(''); }}
               className={`py-2.5 text-xs font-bold rounded-xl transition-all ${
                 authMode === 'login'
                   ? 'bg-white text-slate-900 shadow-sm'
@@ -2435,7 +2614,7 @@ export default function App() {
             </button>
             <button
               type="button"
-              onClick={() => { setAuthMode('register'); setAuthError(''); }}
+              onClick={() => { setAuthMode('register'); setAuthError(''); setAuthPasswordConfirm(''); }}
               className={`py-2.5 text-xs font-bold rounded-xl transition-all ${
                 authMode === 'register'
                   ? 'bg-white text-slate-900 shadow-sm'
@@ -2454,7 +2633,7 @@ export default function App() {
                   <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                   <input
                     type="text"
-                    placeholder="Ej. Javi"
+                    placeholder=""
                     value={authName}
                     onChange={(e) => setAuthName(e.target.value)}
                     className="w-full bg-[#FAF9F6] border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-slate-900 focus:bg-white transition-all"
@@ -2463,15 +2642,42 @@ export default function App() {
               </div>
             )}
 
+            {authMode === 'register' && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
+                  <span>Correo Electrónico</span>
+                  <span className="text-[10px] text-slate-400 font-normal">Para confirmación y avisos</span>
+                </label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                  <input
+                    type="email"
+                    placeholder=""
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    autoComplete="email"
+                    className="w-full bg-[#FAF9F6] border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-slate-900 focus:bg-white transition-all"
+                    required
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700">Usuario</label>
+              <label className="text-xs font-semibold text-slate-700">
+                {authMode === 'login' ? 'Usuario o Correo' : 'Usuario'}
+              </label>
               <div className="relative">
                 <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                 <input
                   type="text"
-                  placeholder="Tu usuario (ej. javi)"
+                  placeholder=""
                   value={authUsername}
                   onChange={(e) => setAuthUsername(e.target.value)}
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   className="w-full bg-[#FAF9F6] border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-slate-900 focus:bg-white transition-all"
                   required
                 />
@@ -2485,15 +2691,69 @@ export default function App() {
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                 <input
-                  type="password"
-                  placeholder="•••••••• (mín. 4 caracteres)"
+                  type={showAuthPassword ? 'text' : 'password'}
+                  placeholder=""
                   value={authPassword}
                   onChange={(e) => setAuthPassword(e.target.value)}
-                  className="w-full bg-[#FAF9F6] border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-slate-900 focus:bg-white transition-all"
+                  autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}
+                  className="w-full bg-[#FAF9F6] border border-slate-200 rounded-xl pl-10 pr-11 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-slate-900 focus:bg-white transition-all"
                   required={authMode === 'register'}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowAuthPassword(v => !v)}
+                  aria-label={showAuthPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  title={showAuthPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  className="absolute right-2 top-1.5 p-1.5 rounded-lg text-slate-400 hover:text-slate-900 transition-colors"
+                >
+                  {showAuthPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
+              {authMode === 'login' && isFirebaseConfigured() && (
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowForgotModal(true);
+                      setForgotMsg('');
+                      setForgotEmail(authEmail || (authUsername.includes('@') ? authUsername : ''));
+                    }}
+                    className="text-[11px] font-semibold text-slate-500 hover:text-slate-900 transition-colors"
+                  >
+                    ¿Has olvidado tu contraseña?
+                  </button>
+                </div>
+              )}
             </div>
+
+            {authMode === 'register' && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-700">
+                  Repetir contraseña
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                  <input
+                    type={showAuthPassword ? 'text' : 'password'}
+                    placeholder=""
+                    value={authPasswordConfirm}
+                    onChange={(e) => setAuthPasswordConfirm(e.target.value)}
+                    autoComplete="new-password"
+                    className="w-full bg-[#FAF9F6] border border-slate-200 rounded-xl pl-10 pr-11 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-slate-900 focus:bg-white transition-all"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAuthPassword(v => !v)}
+                    aria-label={showAuthPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                    title={showAuthPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                    className="absolute right-2 top-1.5 p-1.5 rounded-lg text-slate-400 hover:text-slate-900 transition-colors"
+                  >
+                    {showAuthPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            )}
 
             {authMode === 'register' && (
               <>
@@ -2544,7 +2804,7 @@ export default function App() {
                         type="number"
                         min="120"
                         max="230"
-                        placeholder="Ej. 178"
+                        placeholder=""
                         value={authHeight}
                         onChange={(e) => setAuthHeight(e.target.value)}
                         className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-slate-900"
@@ -2561,7 +2821,7 @@ export default function App() {
                         min="35"
                         max="200"
                         step="0.5"
-                        placeholder="Ej. 74"
+                        placeholder=""
                         value={authWeight}
                         onChange={(e) => setAuthWeight(e.target.value)}
                         className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-slate-900"
@@ -2612,11 +2872,95 @@ export default function App() {
 
             <button
               type="submit"
-              className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 active:scale-[0.99] font-bold rounded-2xl text-sm text-white shadow-md transition-all"
+              disabled={authLoading}
+              className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 active:scale-[0.99] font-bold rounded-2xl text-sm text-white shadow-md transition-all flex items-center justify-center gap-2"
             >
-              {authMode === 'login' ? 'Entrar a mi Armario' : 'Crear mi Armario'}
+              {authLoading && <RefreshCw className="w-4 h-4 animate-spin" />}
+              <span>{authMode === 'login' ? 'Entrar a mi Armario' : 'Crear mi Armario'}</span>
             </button>
+
+            {isFirebaseConfigured() && (
+              <>
+                <div className="relative py-1">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-slate-200/80"></div>
+                  </div>
+                  <div className="relative flex justify-center">
+                    <span className="bg-white px-3 text-[11px] text-slate-400">o continuar con</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleGoogleSignIn}
+                  disabled={authLoading}
+                  className="w-full py-3 px-4 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 flex items-center justify-center gap-2.5 text-xs font-bold text-slate-700 shadow-sm transition-all"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
+                    <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"/>
+                    <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
+                    <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+                  </svg>
+                  <span>Continuar con Google</span>
+                </button>
+              </>
+            )}
           </form>
+
+          {/* Modal Recuperar Contraseña Firebase */}
+          {showForgotModal && (
+            <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="max-w-sm w-full bg-white rounded-3xl p-6 shadow-2xl border border-slate-200/80 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-slate-900">Recuperar contraseña</h3>
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotModal(false)}
+                    className="p-1 rounded-lg text-slate-400 hover:text-slate-700"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <p className="text-xs text-slate-500">
+                  Introduce tu correo electrónico y te enviaremos un enlace oficial para restablecer tu contraseña.
+                </p>
+                <form onSubmit={handleSendResetPassword} className="space-y-3">
+                  <div className="relative">
+                    <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                    <input
+                      type="email"
+                      placeholder="tu@email.com"
+                      value={forgotEmail}
+                      onChange={(e) => setForgotEmail(e.target.value)}
+                      className="w-full bg-[#FAF9F6] border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-slate-900"
+                      required
+                    />
+                  </div>
+                  {forgotMsg && (
+                    <p className="text-xs text-slate-700 bg-slate-100 p-2.5 rounded-xl border border-slate-200">
+                      {forgotMsg}
+                    </p>
+                  )}
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowForgotModal(false)}
+                      className="flex-1 py-2 rounded-xl text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 py-2 rounded-xl text-xs font-bold text-white bg-slate-900 hover:bg-slate-800"
+                    >
+                      Enviar enlace
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -2681,6 +3025,26 @@ export default function App() {
         </button>
       </header>
 
+      {/* Aviso de confirmación de correo electrónico */}
+      {emailNotice && (
+        <div className="mx-4 mt-3 p-3.5 rounded-2xl bg-indigo-50 border border-indigo-200/80 flex items-start justify-between gap-3 text-xs text-indigo-950">
+          <div className="flex items-start gap-2.5">
+            <Mail className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0" />
+            <div>
+              <p className="font-bold">Verificación de correo enviada</p>
+              <p className="text-[11px] text-indigo-800 mt-0.5">{emailNotice}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setEmailNotice('')}
+            className="p-1 rounded-lg text-indigo-400 hover:text-indigo-900"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Modal de Ficha Morfológica y Perfil Personal */}
       {showProfileModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
@@ -2736,7 +3100,7 @@ export default function App() {
                     type="number"
                     min="120"
                     max="230"
-                    placeholder="178"
+                    placeholder=""
                     value={currentUser.heightCm || ''}
                     onChange={(e) => setCurrentUser(prev => ({ ...prev, heightCm: e.target.value ? Number(e.target.value) : '' }))}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-slate-900"
@@ -2752,7 +3116,7 @@ export default function App() {
                     min="35"
                     max="200"
                     step="0.5"
-                    placeholder="74"
+                    placeholder=""
                     value={currentUser.weightKg || ''}
                     onChange={(e) => setCurrentUser(prev => ({ ...prev, weightKg: e.target.value ? Number(e.target.value) : '' }))}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-slate-900"
