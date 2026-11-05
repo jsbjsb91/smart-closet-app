@@ -621,7 +621,7 @@ export default function App() {
     setCurrentUser(updatedSession);
     setSavedUsers(updatedUsers);
     setShowProfileModal(false);
-    showToast('🔒 Perfil cifrado con AES-256 guardado correctamente');
+    showToast('Perfil actualizado correctamente');
   };
 
   const handleExportUserData = () => {
@@ -1808,14 +1808,9 @@ export default function App() {
             </div>
 
             <div className="space-y-1.5">
-              <div className="flex justify-between items-center">
-                <label className="text-xs font-semibold text-slate-700">
-                  Contraseña {authMode === 'register' && <span className="text-indigo-600 font-bold">(cifrada con PBKDF2)</span>}
-                </label>
-                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3" /> AES-256
-                </span>
-              </div>
+              <label className="text-xs font-semibold text-slate-700">
+                Contraseña
+              </label>
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                 <input
@@ -1831,7 +1826,7 @@ export default function App() {
 
             {authMode === 'register' && (
               <>
-                {/* Ficha Morfológica y de Estilo para Recomendaciones de Tiendas */}
+                {/* Ficha Morfológica y de Estilo */}
                 <div className="p-3.5 rounded-2xl bg-indigo-50/50 border border-indigo-100 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-extrabold uppercase tracking-wider text-indigo-700 flex items-center gap-1.5">
@@ -1935,23 +1930,6 @@ export default function App() {
                   />
                   <span>Exigir siempre mi contraseña al entrar desde el acceso rápido</span>
                 </label>
-
-                <label className="flex items-center gap-2.5 text-xs text-slate-600 cursor-pointer p-2.5 rounded-xl bg-slate-50 border border-slate-200/70">
-                  <input
-                    type="checkbox"
-                    checked={includeSampleCloset}
-                    onChange={(e) => setIncludeSampleCloset(e.target.checked)}
-                    className="w-4 h-4 rounded accent-indigo-600"
-                  />
-                  <span>Añadir prendas de muestra para probar rápido</span>
-                </label>
-
-                <div className="p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200/80 flex items-start gap-2 text-[11px] text-emerald-900">
-                  <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span>
-                    <strong>Privacidad Blindada:</strong> Tu contraseña se transforma con <strong>PBKDF2 (100.000 rondas)</strong> y tus datos corporales se cifran con <strong>AES-256-GCM</strong>.
-                  </span>
-                </div>
               </>
             )}
 
@@ -2042,7 +2020,7 @@ export default function App() {
                   <User className="w-5 h-5 text-indigo-600" /> Mi Perfil y Medidas
                 </h3>
                 <p className="text-[11px] text-slate-500">
-                  Ficha morfológica privada cifrada con AES-256 en tu dispositivo
+                  Personaliza tus datos para ajustar tus recomendaciones
                 </p>
               </div>
               <button
@@ -2158,8 +2136,8 @@ export default function App() {
                 type="submit"
                 className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl text-xs shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center gap-1.5"
               >
-                <ShieldCheck className="w-4 h-4" />
-                <span>Guardar y Cifrar Ficha (AES-256)</span>
+                <Check className="w-4 h-4" />
+                <span>Guardar Perfil</span>
               </button>
 
               {/* Centro de Privacidad y Control de Datos del Usuario */}

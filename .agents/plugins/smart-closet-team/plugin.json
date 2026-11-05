@@ -1,0 +1,16 @@
+{
+  "name": "smart-closet-team",
+  "displayName": "Smart Closet Multi-Agent Team",
+  "version": "1.2.0",
+  "description": "Equipo de 7 agentes especializados (Orquestador, Diagnóstico, Mejoras, Desarrollo, Apariencia UI/UX, Estilista IA y QA/Deploy) y reglas de arquitectura para gestionar y evolucionar Smart Closet App.",
+  "logo": "assets/logo.svg",
+  "suggestedPrompts": [
+    "Ejecuta una auditoría completa con agente-diagnostico y agente-mejoras sobre Smart Closet App",
+    "Mejora el algoritmo de recomendación de outfits con experto-ia-estilista",
+    "Optimiza el diseño móvil de Mi Armario con experto-apariencia y despliega con experto-qa-deploy"
+  ],
+  "author": {
+    "name": "Smart Closet Team"
+  },
+  "repository": "https://github.com/jsbjsb91/smart-closet-app"
+}
