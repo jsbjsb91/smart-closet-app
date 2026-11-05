@@ -1,0 +1,356 @@
+rules_version = '2';
+
+// ===============================================================
+// Assumed Data Model — Smart Closet App
+// ===============================================================
+//
+// This security rules file assumes the following data structures:
+//
+// 1. Collection: /users/{userId}
+//    Document ID: {userId} (must match request.auth.uid)
+//    Fields:
+//      - uid: string (required, immutable, must equal userId & request.auth.uid)
+//      - username: string (required, 1..40 chars)
+//      - name: string (required, 1..80 chars)
+//      - gender: string (optional, enum: ['hombre', 'mujer'])
+//      - birthDate: string (optional, ISO date string <= 20 chars)
+//      - heightCm: number (optional, 100..250)
+//      - weightKg: number (optional, 25..250)
+//      - encryptedVault: string (optional, <= 4096 chars, AES-GCM ciphertext)
+//      - requirePinOnQuickLogin: bool (optional)
+//      - updatedAt: string or timestamp (optional, string <= 40 chars)
+//
+// 2. Subcollection: /users/{userId}/garments/{garmentId}
+//    Document ID: {garmentId}
+//    Fields:
+//      - id: string (required, immutable, 1..64 chars)
+//      - name: string (required, 1..100 chars)
+//      - category: string (required, enum: ['Top', 'Bottom', 'Outerwear', 'Footwear'])
+//      - subcategory: string (required, 1..40 chars, valid GARMENT_TYPES id)
+//      - color: string (required, 1..40 chars)
+//      - warmth: number (required, 1..5)
+//      - comfort: number (optional, 1..5)
+//      - occasion: list of strings (required, 1..5 items, allowed: ['Work', 'Going Out', 'Sport'])
+//      - inLaundry: bool (required)
+//      - image: string (required, 1..600000 chars, compressed base64 JPEG data URL or HTTP/HTTPS URL)
+//
+// 3. Subcollection: /users/{userId}/feedback/{feedbackId}
+//    Document ID: {feedbackId}
+//    Fields:
+//      - id: string (required, immutable, 1..64 chars)
+//      - date: string (required, 1..30 chars)
+//      - status: string (required, enum: ['accepted', 'rejected'])
+//      - rating: number (required, 0..10)
+//      - occasion: string (required, enum: ['Work', 'Going Out', 'Sport'])
+//      - comboKey: string (required, 1..200 chars)
+//      - topBottomKey: string (required, 1..120 chars)
+//      - colorPairKey: string (required, 1..100 chars)
+//      - summary: string (required, 1..500 chars)
+//      - reasons: list of strings (required, 0..10 items)
+//      - comment: string (required, 0..500 chars)
+//
+// 4. Subcollection: /users/{userId}/planner/{dayId}
+//    Document ID: {dayId} (enum: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'])
+//    Fields:
+//      - occasion: string (required, enum: ['Work', 'Going Out', 'Sport'])
+//      - warmth: number (required, 1..5)
+//      - garmentIds: list of strings (required, 1..6 items)
+//      - note: string (required, 0..300 chars)
+//      - completed: bool (required)
+//
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    // Check if the user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if user owns the resource (strictly scoped by path userId)
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Check if user is owner based on existing document's uid field
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.uid;
+    }
+
+    // Verify UID hasn't been tampered with on create
+    function uidUnchanged() {
+      return !('uid' in request.resource.data) ||
+        request.resource.data.uid == request.auth.uid;
+    }
+
+    // Ensure uid field is not modified on update
+    function uidNotModified() {
+      return !('uid' in request.resource.data) ||
+        request.resource.data.uid == resource.data.uid;
+    }
+
+    // Validate required fields exist on the incoming document
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    // Validate that the document contains ONLY the explicitly allowed fields
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // Validate that immutable fields have not been modified during an update
+    function areImmutableFieldsUnchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    // Validate required string length bounds
+    function validStringLength(field, minLen, maxLen) {
+      return request.resource.data[field] is string &&
+        request.resource.data[field].size() >= minLen &&
+        request.resource.data[field].size() <= maxLen;
+    }
+
+    // Validate optional string length bounds
+    function isValidOptionalString(field, minLen, maxLen) {
+      return !(field in request.resource.data) ||
+        (request.resource.data[field] is string &&
+         request.resource.data[field].size() >= minLen &&
+         request.resource.data[field].size() <= maxLen);
+    }
+
+    // Validate that a list is a list and enforces size limits
+    function isValidList(listData, minSize, maxSize) {
+      return listData is list &&
+        listData.size() >= minSize &&
+        listData.size() <= maxSize;
+    }
+
+    // Validate image payload (either HTTP/HTTPS URL or compressed JPEG/PNG/WebP data URL within size limit)
+    function isValidImagePayload(img) {
+      return img is string &&
+        img.size() >= 1 &&
+        img.size() <= 600000 &&
+        (img.matches("^https://.*") ||
+         img.matches("^http://.*") ||
+         img.matches("^data:image/(jpeg|jpg|png|webp);base64,[a-zA-Z0-9+/=]+$"));
+    }
+
+    // ===============================================================
+    // Domain Validators (Used in BOTH create and update rules)
+    // ===============================================================
+
+    // 1. Validator for /users/{userId}
+    function isValidUserProfile(data, userId) {
+      return hasOnlyAllowedFields([
+          'uid',
+          'username',
+          'name',
+          'gender',
+          'birthDate',
+          'heightCm',
+          'weightKg',
+          'encryptedVault',
+          'requirePinOnQuickLogin',
+          'updatedAt'
+        ]) &&
+        hasRequiredFields(['uid', 'username', 'name']) &&
+        data.uid is string &&
+        data.uid == userId &&
+        data.uid == request.auth.uid &&
+        validStringLength('username', 1, 40) &&
+        validStringLength('name', 1, 80) &&
+        (!('gender' in data) || data.gender in ['hombre', 'mujer']) &&
+        isValidOptionalString('birthDate', 0, 20) &&
+        (!('heightCm' in data) || (data.heightCm is number && data.heightCm >= 100 && data.heightCm <= 250)) &&
+        (!('weightKg' in data) || (data.weightKg is number && data.weightKg >= 25 && data.weightKg <= 250)) &&
+        isValidOptionalString('encryptedVault', 0, 4096) &&
+        (!('requirePinOnQuickLogin' in data) || data.requirePinOnQuickLogin is bool) &&
+        (!('updatedAt' in data) ||
+          data.updatedAt is timestamp ||
+          (data.updatedAt is string && data.updatedAt.size() <= 40));
+    }
+
+    // 2. Validator for /users/{userId}/garments/{garmentId}
+    function isValidGarment(data) {
+      return hasOnlyAllowedFields([
+          'id',
+          'name',
+          'category',
+          'subcategory',
+          'color',
+          'warmth',
+          'comfort',
+          'occasion',
+          'inLaundry',
+          'image'
+        ]) &&
+        hasRequiredFields([
+          'id',
+          'name',
+          'category',
+          'subcategory',
+          'color',
+          'warmth',
+          'occasion',
+          'inLaundry',
+          'image'
+        ]) &&
+        validStringLength('id', 1, 64) &&
+        validStringLength('name', 1, 100) &&
+        data.category in ['Top', 'Bottom', 'Outerwear', 'Footwear'] &&
+        validStringLength('subcategory', 1, 40) &&
+        data.subcategory in [
+          'Camisetas',
+          'Camisas',
+          'Sudaderas',
+          'Jerseys',
+          'Pantalones',
+          'Vaqueros',
+          'FaldasShorts',
+          'Abrigos',
+          'Blazers',
+          'Calzado'
+        ] &&
+        validStringLength('color', 1, 40) &&
+        data.warmth is number && data.warmth >= 1 && data.warmth <= 5 &&
+        (!('comfort' in data) || (data.comfort is number && data.comfort >= 1 && data.comfort <= 5)) &&
+        isValidList(data.occasion, 1, 5) &&
+        data.occasion.hasOnly(['Work', 'Going Out', 'Sport']) &&
+        data.inLaundry is bool &&
+        isValidImagePayload(data.image);
+    }
+
+    // 3. Validator for /users/{userId}/feedback/{feedbackId}
+    function isValidFeedback(data) {
+      return hasOnlyAllowedFields([
+          'id',
+          'date',
+          'status',
+          'rating',
+          'occasion',
+          'comboKey',
+          'topBottomKey',
+          'colorPairKey',
+          'summary',
+          'reasons',
+          'comment'
+        ]) &&
+        hasRequiredFields([
+          'id',
+          'date',
+          'status',
+          'rating',
+          'occasion',
+          'comboKey',
+          'topBottomKey',
+          'colorPairKey',
+          'summary',
+          'reasons',
+          'comment'
+        ]) &&
+        validStringLength('id', 1, 64) &&
+        validStringLength('date', 1, 30) &&
+        data.status in ['accepted', 'rejected'] &&
+        data.rating is number && data.rating >= 0 && data.rating <= 10 &&
+        data.occasion in ['Work', 'Going Out', 'Sport'] &&
+        validStringLength('comboKey', 1, 200) &&
+        validStringLength('topBottomKey', 1, 120) &&
+        validStringLength('colorPairKey', 1, 100) &&
+        validStringLength('summary', 1, 500) &&
+        isValidList(data.reasons, 0, 10) &&
+        data.reasons.hasOnly(['colors', 'too_cold', 'too_warm', 'wrong_style', 'dislike_combo']) &&
+        validStringLength('comment', 0, 500);
+    }
+
+    // 4. Validator for /users/{userId}/planner/{dayId}
+    function isValidPlannerDay(data, dayId) {
+      return dayId in ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'] &&
+        hasOnlyAllowedFields([
+          'occasion',
+          'warmth',
+          'garmentIds',
+          'note',
+          'completed'
+        ]) &&
+        hasRequiredFields([
+          'occasion',
+          'warmth',
+          'garmentIds',
+          'note',
+          'completed'
+        ]) &&
+        data.occasion in ['Work', 'Going Out', 'Sport'] &&
+        data.warmth is number && data.warmth >= 1 && data.warmth <= 5 &&
+        isValidList(data.garmentIds, 1, 6) &&
+        data.garmentIds[0] is string && data.garmentIds[0].size() >= 1 && data.garmentIds[0].size() <= 64 &&
+        (data.garmentIds.size() < 2 || (data.garmentIds[1] is string && data.garmentIds[1].size() >= 1 && data.garmentIds[1].size() <= 64)) &&
+        (data.garmentIds.size() < 3 || (data.garmentIds[2] is string && data.garmentIds[2].size() >= 1 && data.garmentIds[2].size() <= 64)) &&
+        (data.garmentIds.size() < 4 || (data.garmentIds[3] is string && data.garmentIds[3].size() >= 1 && data.garmentIds[3].size() <= 64)) &&
+        (data.garmentIds.size() < 5 || (data.garmentIds[4] is string && data.garmentIds[4].size() >= 1 && data.garmentIds[4].size() <= 64)) &&
+        (data.garmentIds.size() < 6 || (data.garmentIds[5] is string && data.garmentIds[5].size() >= 1 && data.garmentIds[5].size() <= 64)) &&
+        validStringLength('note', 0, 300) &&
+        data.completed is bool;
+    }
+
+    // ===============================================================
+    // Collection Security Rules
+    // ===============================================================
+
+    // 1. User Profile Document (/users/{userId})
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) &&
+        uidUnchanged() &&
+        isValidUserProfile(request.resource.data, userId);
+      allow update: if isOwner(userId) &&
+        isDocOwner() &&
+        uidNotModified() &&
+        areImmutableFieldsUnchanged(['uid']) &&
+        isValidUserProfile(request.resource.data, userId);
+      allow delete: if isOwner(userId) && isDocOwner();
+
+      // 2. User Closet Garments Subcollection (/users/{userId}/garments/{garmentId})
+      match /garments/{garmentId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+          isValidGarment(request.resource.data);
+        allow update: if isOwner(userId) &&
+          areImmutableFieldsUnchanged(['id']) &&
+          isValidGarment(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+
+      // 3. AI Stylist Feedback Subcollection (/users/{userId}/feedback/{feedbackId})
+      match /feedback/{feedbackId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+          isValidFeedback(request.resource.data);
+        allow update: if isOwner(userId) &&
+          areImmutableFieldsUnchanged(['id']) &&
+          isValidFeedback(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+
+      // 4. Weekly Outfit Planner Subcollection (/users/{userId}/planner/{dayId})
+      match /planner/{dayId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+          isValidPlannerDay(request.resource.data, dayId);
+        allow update: if isOwner(userId) &&
+          isValidPlannerDay(request.resource.data, dayId);
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    // Default Deny All Fallback
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
