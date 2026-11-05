@@ -32,7 +32,11 @@ import {
   Snowflake,
   Calendar,
   Search,
-  KeyRound
+  KeyRound,
+  Ruler,
+  Scale,
+  Cake,
+  ShoppingBag
 } from 'lucide-react';
 
 // Clasificaciones detalladas de prendas
@@ -74,6 +78,39 @@ const WEEK_DAYS = [
   { id: 'Sáb', full: 'Sábado', defaultOccasion: 'Going Out' },
   { id: 'Dom', full: 'Domingo', defaultOccasion: 'Going Out' }
 ];
+
+// Helpers de Ficha Morfológica (Edad y Talla Recomendada para Tiendas)
+const calculateAgeFromBirthDate = (birthDateStr) => {
+  if (!birthDateStr) return null;
+  const birth = new Date(birthDateStr);
+  if (isNaN(birth.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  return age >= 0 && age <= 120 ? age : null;
+};
+
+const estimateRecommendedSize = (weightKg, heightCm, gender = 'hombre') => {
+  const w = Number(weightKg);
+  const h = Number(heightCm);
+  if (!w || !h || h < 120 || w < 30) return null;
+  const bmi = w / Math.pow(h / 100, 2);
+
+  if (gender === 'mujer') {
+    if (bmi < 19.5 && w < 52) return 'XS (EU 34)';
+    if (bmi < 22 && w < 60) return 'S (EU 36)';
+    if (bmi < 25 && w < 68) return 'M (EU 38-40)';
+    if (bmi < 28 && w < 78) return 'L (EU 42)';
+    return 'XL (EU 44+)';
+  } else {
+    if (bmi < 20 && w < 64) return 'XS / S';
+    if (bmi < 22.5 && w < 73) return 'S / M';
+    if (bmi < 25.5 && w < 84) return 'M / L';
+    if (bmi < 28.5 && w < 95) return 'L / XL';
+    return 'XL / XXL';
+  }
+};
 
 const getColorHex = (colorName = '') => {
   const found = QUICK_COLORS.find(c => c.name.toLowerCase() === String(colorName).toLowerCase());
@@ -217,8 +254,13 @@ export default function App() {
   const [authUsername, setAuthUsername] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authName, setAuthName] = useState('');
+  const [authGender, setAuthGender] = useState('hombre'); // 'hombre' | 'mujer'
+  const [authBirthDate, setAuthBirthDate] = useState('');
+  const [authHeight, setAuthHeight] = useState('');
+  const [authWeight, setAuthWeight] = useState('');
   const [includeSampleCloset, setIncludeSampleCloset] = useState(true);
   const [authError, setAuthError] = useState('');
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   // --- Navegación, Armario y Filtro ---
   const [activeTab, setActiveTab] = useState('generator');
@@ -428,10 +470,33 @@ export default function App() {
   };
 
   const quickLoginUser = (userObj) => {
-    const sessionUser = { username: userObj.username, name: userObj.name };
+    const sessionUser = {
+      username: userObj.username,
+      name: userObj.name,
+      gender: userObj.gender || 'hombre',
+      birthDate: userObj.birthDate || '',
+      heightCm: userObj.heightCm || '',
+      weightKg: userObj.weightKg || ''
+    };
     localStorage.setItem('smart_closet_current_user', JSON.stringify(sessionUser));
     setCurrentUser(sessionUser);
     setCurrentOutfit(null);
+  };
+
+  const handleUpdateUserProfile = (e) => {
+    e.preventDefault();
+    if (!currentUser) return;
+    const users = getUsers();
+    const updatedUsers = users.map(u =>
+      u.username === currentUser.username
+        ? { ...u, ...currentUser }
+        : u
+    );
+    localStorage.setItem('smart_closet_users', JSON.stringify(updatedUsers));
+    localStorage.setItem('smart_closet_current_user', JSON.stringify(currentUser));
+    setSavedUsers(updatedUsers);
+    setShowProfileModal(false);
+    showToast('Ficha de medidas y perfil actualizada');
   };
 
   const handleAuthSubmit = (e) => {
@@ -454,7 +519,11 @@ export default function App() {
       const newUser = {
         username: usernameClean,
         name: authName.trim() || authUsername.trim(),
-        password: authPassword
+        password: authPassword,
+        gender: authGender || 'hombre',
+        birthDate: authBirthDate,
+        heightCm: authHeight ? Number(authHeight) : '',
+        weightKg: authWeight ? Number(authWeight) : ''
       };
       const updated = [...users, newUser];
       localStorage.setItem('smart_closet_users', JSON.stringify(updated));
@@ -463,7 +532,14 @@ export default function App() {
       const initialCloset = includeSampleCloset ? INITIAL_GARMENTS : [];
       localStorage.setItem(`smart_closet_garments_${usernameClean}`, JSON.stringify(initialCloset));
       
-      const sessionUser = { username: newUser.username, name: newUser.name };
+      const sessionUser = {
+        username: newUser.username,
+        name: newUser.name,
+        gender: newUser.gender,
+        birthDate: newUser.birthDate,
+        heightCm: newUser.heightCm,
+        weightKg: newUser.weightKg
+      };
       localStorage.setItem('smart_closet_current_user', JSON.stringify(sessionUser));
       setCurrentUser(sessionUser);
       setCurrentOutfit(null);
@@ -1386,15 +1462,112 @@ export default function App() {
             </div>
 
             {authMode === 'register' && (
-              <label className="flex items-center gap-2.5 text-xs text-slate-600 cursor-pointer p-2.5 rounded-xl bg-slate-50 border border-slate-200/70">
-                <input
-                  type="checkbox"
-                  checked={includeSampleCloset}
-                  onChange={(e) => setIncludeSampleCloset(e.target.checked)}
-                  className="w-4 h-4 rounded accent-indigo-600"
-                />
-                <span>Añadir prendas de muestra para probar rápido</span>
-              </label>
+              <>
+                {/* Ficha Morfológica y de Estilo para Recomendaciones de Tiendas */}
+                <div className="p-3.5 rounded-2xl bg-indigo-50/50 border border-indigo-100 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-indigo-700 flex items-center gap-1.5">
+                      <ShoppingBag className="w-3.5 h-3.5" /> Perfil de Talla y Estilo
+                    </span>
+                    {estimateRecommendedSize(authWeight, authHeight, authGender) && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-600 text-white">
+                        Talla est.: {estimateRecommendedSize(authWeight, authHeight, authGender)}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Hombre / Mujer */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700">Género / Corte de prendas</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { id: 'hombre', label: '👨 Hombre' },
+                        { id: 'mujer', label: '👩 Mujer' }
+                      ].map(g => (
+                        <button
+                          key={g.id}
+                          type="button"
+                          onClick={() => setAuthGender(g.id)}
+                          className={`py-2 rounded-xl text-xs font-bold border transition-all ${
+                            authGender === g.id
+                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          {g.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Peso (kg) y Altura (cm) */}
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-700 flex items-center gap-1">
+                        <Ruler className="w-3.5 h-3.5 text-indigo-500" /> Altura (cm)
+                      </label>
+                      <input
+                        type="number"
+                        min="120"
+                        max="230"
+                        placeholder="Ej. 178"
+                        value={authHeight}
+                        onChange={(e) => setAuthHeight(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-700 flex items-center gap-1">
+                        <Scale className="w-3.5 h-3.5 text-indigo-500" /> Peso (kg)
+                      </label>
+                      <input
+                        type="number"
+                        min="35"
+                        max="200"
+                        step="0.5"
+                        placeholder="Ej. 74"
+                        value={authWeight}
+                        onChange={(e) => setAuthWeight(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Fecha de Nacimiento */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center">
+                      <label className="text-xs font-semibold text-slate-700 flex items-center gap-1">
+                        <Cake className="w-3.5 h-3.5 text-indigo-500" /> Fecha de nacimiento
+                      </label>
+                      {calculateAgeFromBirthDate(authBirthDate) !== null && (
+                        <span className="text-[11px] font-bold text-indigo-600">
+                          {calculateAgeFromBirthDate(authBirthDate)} años
+                        </span>
+                      )}
+                    </div>
+                    <input
+                      type="date"
+                      value={authBirthDate}
+                      onChange={(e) => setAuthBirthDate(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <label className="flex items-center gap-2.5 text-xs text-slate-600 cursor-pointer p-2.5 rounded-xl bg-slate-50 border border-slate-200/70">
+                  <input
+                    type="checkbox"
+                    checked={includeSampleCloset}
+                    onChange={(e) => setIncludeSampleCloset(e.target.checked)}
+                    className="w-4 h-4 rounded accent-indigo-600"
+                  />
+                  <span>Añadir prendas de muestra para probar rápido</span>
+                </label>
+              </>
             )}
 
             {authError && (
@@ -1428,16 +1601,32 @@ export default function App() {
         </div>
       )}
 
-      {/* Cabecera Minimalista */}
+      {/* Cabecera Minimalista con Acceso a Ficha Morfológica / Talla */}
       <header className="px-5 pt-4 pb-3 bg-white/90 backdrop-blur-md sticky top-0 z-20 border-b border-slate-200/70 flex justify-between items-center">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white font-bold text-sm shadow-sm">
+          <button
+            type="button"
+            onClick={() => setShowProfileModal(true)}
+            title="Editar mi ficha de talla, altura y peso"
+            className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white font-bold text-sm shadow-sm hover:scale-105 transition-transform"
+          >
             {(currentUser.name || currentUser.username).charAt(0).toUpperCase()}
-          </div>
+          </button>
           <div>
-            <h1 className="text-sm font-extrabold text-slate-900 leading-tight">
-              Hola, {currentUser.name}
-            </h1>
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-sm font-extrabold text-slate-900 leading-tight">
+                Hola, {currentUser.name}
+              </h1>
+              <button
+                type="button"
+                onClick={() => setShowProfileModal(true)}
+                className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200/70 hover:bg-indigo-100 transition-colors"
+              >
+                {estimateRecommendedSize(currentUser.weightKg, currentUser.heightCm, currentUser.gender)
+                  ? `Talla ${estimateRecommendedSize(currentUser.weightKg, currentUser.heightCm, currentUser.gender)}`
+                  : 'Mi Talla / Medidas'}
+              </button>
+            </div>
             <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-medium">
               <MapPin className="w-3 h-3 text-indigo-500" />
               <span>{locationName}</span>
@@ -1457,6 +1646,124 @@ export default function App() {
           <span>Salir</span>
         </button>
       </header>
+
+      {/* Modal de Ficha Morfológica y Perfil para Tiendas */}
+      {showProfileModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl border border-slate-100">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                  <ShoppingBag className="w-5 h-5 text-indigo-600" /> Mi Perfil y Medidas
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Para recomendarte prendas y tallas exactas de tiendas
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowProfileModal(false)}
+                className="p-1.5 bg-slate-100 text-slate-500 hover:text-slate-800 rounded-full"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateUserProfile} className="space-y-3.5">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700">Género / Corte preferido</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'hombre', label: '👨 Hombre' },
+                    { id: 'mujer', label: '👩 Mujer' }
+                  ].map(g => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => setCurrentUser(prev => ({ ...prev, gender: g.id }))}
+                      className={`py-2 rounded-xl text-xs font-bold border transition-all ${
+                        (currentUser.gender || 'hombre') === g.id
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                          : 'bg-slate-50 text-slate-600 border-slate-200'
+                      }`}
+                    >
+                      {g.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                    <Ruler className="w-3.5 h-3.5 text-indigo-500" /> Altura (cm)
+                  </label>
+                  <input
+                    type="number"
+                    min="120"
+                    max="230"
+                    placeholder="178"
+                    value={currentUser.heightCm || ''}
+                    onChange={(e) => setCurrentUser(prev => ({ ...prev, heightCm: e.target.value ? Number(e.target.value) : '' }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                    <Scale className="w-3.5 h-3.5 text-indigo-500" /> Peso (kg)
+                  </label>
+                  <input
+                    type="number"
+                    min="35"
+                    max="200"
+                    step="0.5"
+                    placeholder="74"
+                    value={currentUser.weightKg || ''}
+                    onChange={(e) => setCurrentUser(prev => ({ ...prev, weightKg: e.target.value ? Number(e.target.value) : '' }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                    <Cake className="w-3.5 h-3.5 text-indigo-500" /> Fecha de nacimiento
+                  </label>
+                  {calculateAgeFromBirthDate(currentUser.birthDate) !== null && (
+                    <span className="text-xs font-bold text-indigo-600">
+                      {calculateAgeFromBirthDate(currentUser.birthDate)} años
+                    </span>
+                  )}
+                </div>
+                <input
+                  type="date"
+                  value={currentUser.birthDate || ''}
+                  onChange={(e) => setCurrentUser(prev => ({ ...prev, birthDate: e.target.value }))}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              {estimateRecommendedSize(currentUser.weightKg, currentUser.heightCm, currentUser.gender) && (
+                <div className="p-3 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-between text-xs">
+                  <span className="font-semibold text-indigo-950">Talla recomendada en tiendas:</span>
+                  <span className="font-extrabold text-indigo-700 bg-white px-2.5 py-1 rounded-xl border border-indigo-200">
+                    {estimateRecommendedSize(currentUser.weightKg, currentUser.heightCm, currentUser.gender)}
+                  </span>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl text-xs shadow-lg shadow-indigo-600/20 transition-all"
+              >
+                Guardar Ficha de Perfil
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* =====================================================================
           VISTA 1: GENERADOR DE OUTFITS ("HOY")
