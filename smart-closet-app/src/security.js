@@ -23,18 +23,30 @@ const base64ToBuf = (base64) => {
   return bytes.buffer;
 };
 
+const memorySaltFallback = {};
+
 /**
  * Genera o recupera un salt aleatorio de 128 bits para un usuario.
  */
 export const getOrCreateUserSalt = (username) => {
-  const key = `smart_closet_salt_${username.toLowerCase()}`;
-  let existing = localStorage.getItem(key);
-  if (!existing) {
-    const randomBytes = crypto.getRandomValues(new Uint8Array(16));
-    existing = bufToBase64(randomBytes.buffer);
-    localStorage.setItem(key, existing);
+  const safeUser = (username || 'default').toLowerCase();
+  const key = `smart_closet_salt_${safeUser}`;
+  try {
+    let existing = localStorage.getItem(key);
+    if (!existing) {
+      const randomBytes = crypto.getRandomValues(new Uint8Array(16));
+      existing = bufToBase64(randomBytes.buffer);
+      localStorage.setItem(key, existing);
+    }
+    return existing;
+  } catch (e) {
+    console.warn('Fallback en memoria para salt criptográfico:', e);
+    if (!memorySaltFallback[safeUser]) {
+      const randomBytes = crypto.getRandomValues(new Uint8Array(16));
+      memorySaltFallback[safeUser] = bufToBase64(randomBytes.buffer);
+    }
+    return memorySaltFallback[safeUser];
   }
-  return existing;
 };
 
 /**

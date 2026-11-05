@@ -297,6 +297,13 @@ export default function App() {
     }
   });
 
+  // --- Prenda Ancla ("Pin & Build Outfit") y Maleta de Viaje (Cápsula IA) ---
+  const [lockedGarment, setLockedGarment] = useState(null);
+  const [showCapsuleBuilder, setShowCapsuleBuilder] = useState(false);
+  const [tripDays, setTripDays] = useState(3);
+  const [tripOccasion, setTripOccasion] = useState('Going Out');
+  const [capsuleItems, setCapsuleItems] = useState([]);
+
   // --- Historial de Feedback del Usuario ---
   const [feedbackHistory, setFeedbackHistory] = useState([]);
   const [showRejectPanel, setShowRejectPanel] = useState(false);
@@ -304,11 +311,41 @@ export default function App() {
   const [customFeedbackText, setCustomFeedbackText] = useState('');
   const [outfitRating, setOutfitRating] = useState(8);
   const [toastMsg, setToastMsg] = useState('');
+  const toastTimeoutRef = useRef(null);
 
   const showToast = (msg) => {
     setToastMsg(msg);
-    setTimeout(() => setToastMsg(''), 3200);
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    toastTimeoutRef.current = setTimeout(() => setToastMsg(''), 3200);
   };
+
+  // Rehidratar y descifrar bóveda AES-256 en memoria si la sesión persistida está cifrada
+  useEffect(() => {
+    let active = true;
+    const rehydrateEncryptedSession = async () => {
+      if (!currentUser?.username) return;
+      if (currentUser.encryptedVault && !currentUser._decryptedInMemory) {
+        const decrypted = await decryptSensitiveProfile(currentUser.username, currentUser.encryptedVault);
+        if (!active) return;
+        setCurrentUser(prev =>
+          prev
+            ? {
+                ...prev,
+                gender: decrypted.gender || prev.gender || 'hombre',
+                birthDate: decrypted.birthDate || '',
+                heightCm: decrypted.heightCm ?? '',
+                weightKg: decrypted.weightKg ?? '',
+                _decryptedInMemory: true
+              }
+            : null
+        );
+      }
+    };
+    rehydrateEncryptedSession();
+    return () => {
+      active = false;
+    };
+  }, [currentUser?.username]);
 
   // Cargar lista de usuarios registrados
   useEffect(() => {
@@ -318,11 +355,11 @@ export default function App() {
     } catch {
       setSavedUsers([]);
     }
-  }, [currentUser]);
+  }, [currentUser?.username]);
 
   // Cargar el armario, el feedback y el plan semanal específico del usuario cuando inicia sesión
   useEffect(() => {
-    if (!currentUser) {
+    if (!currentUser?.username) {
       setGarments([]);
       setFeedbackHistory([]);
       setWeeklyPlan({});
@@ -337,6 +374,7 @@ export default function App() {
       if (savedGarments) {
         const parsed = JSON.parse(savedGarments).map(g => ({
           ...g,
+          wearCount: Number(g.wearCount) || 0,
           subcategory: g.subcategory || getDefaultSubcategory(g.category),
           category: getSlotFromType(g.subcategory || getDefaultSubcategory(g.category), g.category)
         }));
@@ -355,7 +393,7 @@ export default function App() {
       console.error('Error al cargar datos del usuario:', e);
       setGarments(INITIAL_GARMENTS);
     }
-  }, [currentUser]);
+  }, [currentUser?.username]);
 
   // Guardar plan semanal del usuario actual
   const updateUserPlanner = (newPlan) => {
@@ -465,8 +503,32 @@ export default function App() {
 
   useEffect(() => {
     fetchWeather();
-    return () => stopCamera();
+    return () => {
+      stopCamera();
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    };
   }, []);
+
+  useEffect(() => {
+    if (!showAddModal) {
+      stopCamera();
+    }
+  }, [showAddModal]);
+
+  const persistEncryptedSessionUser = (userPayload) => {
+    try {
+      const safeStorageSession = {
+        username: userPayload.username,
+        name: userPayload.name,
+        encryptedVault: userPayload.encryptedVault || '',
+        requirePinOnQuickLogin: Boolean(userPayload.requirePinOnQuickLogin),
+        encrypted: true
+      };
+      localStorage.setItem('smart_closet_current_user', JSON.stringify(safeStorageSession));
+    } catch (e) {
+      console.error('Error al persistir sesión cifrada:', e);
+    }
+  };
 
   // --- Funciones de Autenticación ---
   const getUsers = () => {
@@ -488,23 +550,34 @@ export default function App() {
     }
 
     let sensitive = {};
-    if (userObj.encryptedVault) {
-      sensitive = await decryptSensitiveProfile(userObj.username, userObj.encryptedVault);
+    let vault = userObj.encryptedVault;
+    if (vault) {
+      sensitive = await decryptSensitiveProfile(userObj.username, vault);
+    } else {
+      vault = await encryptSensitiveProfile(userObj.username, {
+        gender: userObj.gender || 'hombre',
+        birthDate: userObj.birthDate || '',
+        heightCm: userObj.heightCm ?? '',
+        weightKg: userObj.weightKg ?? ''
+      });
     }
 
     const sessionUser = {
       username: userObj.username,
       name: userObj.name,
+      encryptedVault: vault,
       gender: sensitive.gender || userObj.gender || 'hombre',
       birthDate: sensitive.birthDate || userObj.birthDate || '',
       heightCm: sensitive.heightCm ?? userObj.heightCm ?? '',
       weightKg: sensitive.weightKg ?? userObj.weightKg ?? '',
       requirePinOnQuickLogin: Boolean(userObj.requirePinOnQuickLogin),
-      encrypted: true
+      encrypted: true,
+      _decryptedInMemory: true
     };
-    localStorage.setItem('smart_closet_current_user', JSON.stringify(sessionUser));
+    persistEncryptedSessionUser(sessionUser);
     setCurrentUser(sessionUser);
     setCurrentOutfit(null);
+    setLockedGarment(null);
   };
 
   const handleUpdateUserProfile = async (e) => {
@@ -533,8 +606,19 @@ export default function App() {
       return copy;
     });
 
-    localStorage.setItem('smart_closet_users', JSON.stringify(updatedUsers));
-    localStorage.setItem('smart_closet_current_user', JSON.stringify({ ...currentUser, encrypted: true }));
+    try {
+      localStorage.setItem('smart_closet_users', JSON.stringify(updatedUsers));
+    } catch (err) {
+      console.error('Error guardando usuarios:', err);
+    }
+    const updatedSession = {
+      ...currentUser,
+      encryptedVault,
+      encrypted: true,
+      _decryptedInMemory: true
+    };
+    persistEncryptedSessionUser(updatedSession);
+    setCurrentUser(updatedSession);
     setSavedUsers(updatedUsers);
     setShowProfileModal(false);
     showToast('🔒 Perfil cifrado con AES-256 guardado correctamente');
@@ -568,18 +652,23 @@ export default function App() {
     if (!confirmDelete) return;
 
     const uName = currentUser.username;
-    localStorage.removeItem(`smart_closet_garments_${uName}`);
-    localStorage.removeItem(`smart_closet_feedback_${uName}`);
-    localStorage.removeItem(`smart_closet_planner_${uName}`);
-    localStorage.removeItem(`smart_closet_salt_${uName}`);
-    localStorage.removeItem('smart_closet_current_user');
+    try {
+      localStorage.removeItem(`smart_closet_garments_${uName}`);
+      localStorage.removeItem(`smart_closet_feedback_${uName}`);
+      localStorage.removeItem(`smart_closet_planner_${uName}`);
+      localStorage.removeItem(`smart_closet_salt_${uName}`);
+      localStorage.removeItem('smart_closet_current_user');
 
-    const remainingUsers = getUsers().filter(u => u.username !== uName);
-    localStorage.setItem('smart_closet_users', JSON.stringify(remainingUsers));
-    setSavedUsers(remainingUsers);
+      const remainingUsers = getUsers().filter(u => u.username !== uName);
+      localStorage.setItem('smart_closet_users', JSON.stringify(remainingUsers));
+      setSavedUsers(remainingUsers);
+    } catch (err) {
+      console.error('Error eliminando datos:', err);
+    }
     setShowProfileModal(false);
     setCurrentUser(null);
     setCurrentOutfit(null);
+    setLockedGarment(null);
   };
 
   const handleAuthSubmit = async (e) => {
@@ -622,22 +711,28 @@ export default function App() {
         createdAt: new Date().toISOString()
       };
       const updated = [...users, newUser];
-      localStorage.setItem('smart_closet_users', JSON.stringify(updated));
+      try {
+        localStorage.setItem('smart_closet_users', JSON.stringify(updated));
+        const initialCloset = includeSampleCloset ? INITIAL_GARMENTS : [];
+        localStorage.setItem(`smart_closet_garments_${usernameClean}`, JSON.stringify(initialCloset));
+      } catch (err) {
+        console.error('Error guardando nuevo usuario:', err);
+      }
       setSavedUsers(updated);
-      
-      const initialCloset = includeSampleCloset ? INITIAL_GARMENTS : [];
-      localStorage.setItem(`smart_closet_garments_${usernameClean}`, JSON.stringify(initialCloset));
       
       const sessionUser = {
         username: newUser.username,
         name: newUser.name,
+        encryptedVault,
         ...sensitiveData,
         requirePinOnQuickLogin,
-        encrypted: true
+        encrypted: true,
+        _decryptedInMemory: true
       };
-      localStorage.setItem('smart_closet_current_user', JSON.stringify(sessionUser));
+      persistEncryptedSessionUser(sessionUser);
       setCurrentUser(sessionUser);
       setCurrentOutfit(null);
+      setLockedGarment(null);
       setAuthPassword('');
     } else {
       const found = users.find(u => u.username === usernameClean);
@@ -668,32 +763,42 @@ export default function App() {
         delete found.weightKg;
       }
       const updatedUsers = users.map(u => (u.username === found.username ? found : u));
-      localStorage.setItem('smart_closet_users', JSON.stringify(updatedUsers));
+      try {
+        localStorage.setItem('smart_closet_users', JSON.stringify(updatedUsers));
+      } catch (err) {
+        console.error('Error actualizando usuario:', err);
+      }
       setSavedUsers(updatedUsers);
 
       const decrypted = await decryptSensitiveProfile(found.username, found.encryptedVault);
       const sessionUser = {
         username: found.username,
         name: found.name,
+        encryptedVault: found.encryptedVault,
         gender: decrypted.gender || found.gender || 'hombre',
         birthDate: decrypted.birthDate || found.birthDate || '',
         heightCm: decrypted.heightCm ?? found.heightCm ?? '',
         weightKg: decrypted.weightKg ?? found.weightKg ?? '',
         requirePinOnQuickLogin: Boolean(found.requirePinOnQuickLogin),
-        encrypted: true
+        encrypted: true,
+        _decryptedInMemory: true
       };
-      localStorage.setItem('smart_closet_current_user', JSON.stringify(sessionUser));
+      persistEncryptedSessionUser(sessionUser);
       setCurrentUser(sessionUser);
       setCurrentOutfit(null);
+      setLockedGarment(null);
       setAuthPassword('');
     }
   };
 
   const handleLogout = () => {
     stopCamera();
-    localStorage.removeItem('smart_closet_current_user');
+    try {
+      localStorage.removeItem('smart_closet_current_user');
+    } catch {}
     setCurrentUser(null);
     setCurrentOutfit(null);
+    setLockedGarment(null);
     setAuthUsername('');
     setAuthPassword('');
     setAuthError('');
@@ -871,7 +976,7 @@ export default function App() {
     try {
       const { GoogleGenerativeAI } = await import('@google/generative-ai');
       const genAI = new GoogleGenerativeAI(activeKey);
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
       const base64Data = dataUrl.split(',')[1];
       const prompt = `Analiza esta foto de una prenda de ropa y devuelve EXCLUSIVAMENTE un JSON válido (sin markdown) con este esquema:
@@ -931,9 +1036,10 @@ export default function App() {
     if (!videoRef.current) return;
     const video = videoRef.current;
     const canvas = document.createElement('canvas');
-    const maxDim = 600;
-    let width = video.videoWidth || 600;
-    let height = video.videoHeight || 600;
+    const maxDim = garments.length > 40 ? 480 : 600;
+    const jpegQuality = garments.length > 40 ? 0.72 : 0.82;
+    let width = video.videoWidth || maxDim;
+    let height = video.videoHeight || maxDim;
 
     if (width > height && width > maxDim) {
       height = Math.round((height * maxDim) / width);
@@ -947,7 +1053,7 @@ export default function App() {
     canvas.height = height;
     const ctx = canvas.getContext('2d');
     ctx.drawImage(video, 0, 0, width, height);
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+    const dataUrl = canvas.toDataURL('image/jpeg', jpegQuality);
     setNewGarment(prev => ({ ...prev, image: dataUrl }));
     stopCamera();
     analyzeGarmentImageWithAI(dataUrl, newGarment.subcategory);
@@ -962,7 +1068,8 @@ export default function App() {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const maxDim = 600;
+        const maxDim = garments.length > 40 ? 480 : 600;
+        const jpegQuality = garments.length > 40 ? 0.72 : 0.82;
         let width = img.width;
         let height = img.height;
 
@@ -978,7 +1085,7 @@ export default function App() {
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', jpegQuality);
         setNewGarment(prev => ({ ...prev, image: compressedDataUrl }));
         stopCamera();
         analyzeGarmentImageWithAI(compressedDataUrl, newGarment.subcategory);
@@ -999,8 +1106,8 @@ export default function App() {
     });
   };
 
-  const handleSaveGarment = (e) => {
-    e.preventDefault();
+  const handleSaveGarment = (e, keepOpenForBurst = false) => {
+    if (e?.preventDefault) e.preventDefault();
     if (!newGarment.image) {
       alert('Primero haz una foto o sube una imagen de la prenda.');
       return;
@@ -1019,22 +1126,29 @@ export default function App() {
       comfort: 4,
       color: newGarment.color.trim() || 'Negro',
       inLaundry: false,
+      wearCount: 0,
       image: newGarment.image
     };
 
     updateUserGarments([created, ...garments]);
-    stopCamera();
-    setShowAddModal(false);
+    setAiVisionBadge('');
     setNewGarment({
       name: '',
-      subcategory: 'Camisetas',
+      subcategory: newGarment.subcategory || 'Camisetas',
       occasion: ['Work', 'Going Out'],
       warmth: 3,
       comfort: 4,
       color: 'Negro',
       image: ''
     });
-    showToast(`"${created.name}" añadida a tu armario`);
+
+    if (keepOpenForBurst) {
+      showToast(`📸 "${created.name}" guardada. ¡Lista para la siguiente foto!`);
+    } else {
+      stopCamera();
+      setShowAddModal(false);
+      showToast(`"${created.name}" añadida a tu armario`);
+    }
   };
 
   // Eliminar prenda del armario
@@ -1042,6 +1156,9 @@ export default function App() {
     const target = garments.find(g => String(g.id) === String(id));
     const updated = garments.filter(g => String(g.id) !== String(id));
     updateUserGarments(updated);
+    if (lockedGarment && String(lockedGarment.id) === String(id)) {
+      setLockedGarment(null);
+    }
     if (currentOutfit && currentOutfit.some(g => String(g.id) === String(id))) {
       setCurrentOutfit(null);
     }
@@ -1080,8 +1197,21 @@ export default function App() {
     setCurrentOutfit(updatedOutfit);
   };
 
-  // --- Generador Inteligente de Outfits con Aprendizaje de Feedback ---
-  const generateOutfit = () => {
+  // --- Fijar Prenda Ancla ("Pin & Build Outfit") desde Mi Armario ---
+  const combineWithGarment = (garment) => {
+    if (garment.inLaundry) {
+      showToast('Esta prenda está en la colada. Lávala primero para combinarla.');
+      return;
+    }
+    setLockedGarment(garment);
+    setActiveTab('generator');
+    generateOutfit(garment);
+  };
+
+  // --- Generador Inteligente de Outfits con Prenda Ancla, Rotación Anti-Olvido y Aprendizaje ---
+  const generateOutfit = (explicitAnchor = undefined) => {
+    const activeAnchor =
+      explicitAnchor && explicitAnchor.id ? explicitAnchor : lockedGarment;
     setGenerating(true);
     setShowRejectPanel(false);
 
@@ -1091,6 +1221,9 @@ export default function App() {
       const occasionGarments = cleanGarments.filter(g => g.occasion?.includes(selectedOccasion));
 
       const getPool = (slot) => {
+        if (activeAnchor && getSlotFromType(activeAnchor.subcategory, activeAnchor.category) === slot) {
+          return [activeAnchor];
+        }
         const byOccasion = occasionGarments.filter(g => getSlotFromType(g.subcategory, g.category) === slot);
         if (byOccasion.length > 0) return byOccasion;
         return cleanGarments.filter(g => getSlotFromType(g.subcategory, g.category) === slot);
@@ -1116,16 +1249,25 @@ export default function App() {
       });
       const targetWarmth = Math.min(5, Math.max(1, Math.round(desiredWarmth + warmthBias)));
 
+      const avgClosetWear =
+        cleanGarments.reduce((acc, g) => acc + (Number(g.wearCount) || 0), 0) /
+        Math.max(1, cleanGarments.length);
+
       let bestCandidate = null;
       let bestScore = -9999;
 
-      for (let i = 0; i < 25; i++) {
+      for (let i = 0; i < 28; i++) {
         const candidateTop = tops[Math.floor(Math.random() * tops.length)];
         const candidateBottom = bottoms[Math.floor(Math.random() * bottoms.length)];
         const candidateFootwear = footwears[Math.floor(Math.random() * footwears.length)];
 
         let candidateOuterwear = null;
-        if (targetWarmth >= 3 || isRaining) {
+        if (
+          activeAnchor &&
+          getSlotFromType(activeAnchor.subcategory, activeAnchor.category) === 'Outerwear'
+        ) {
+          candidateOuterwear = activeAnchor;
+        } else if (targetWarmth >= 3 || isRaining) {
           if (outerwears.length > 0) {
             candidateOuterwear = outerwears[Math.floor(Math.random() * outerwears.length)];
           }
@@ -1160,6 +1302,13 @@ export default function App() {
           }
         });
 
+        // Bonus de rotación anti-olvido para dar salida a prendas con 0 o pocos usos
+        candidateItems.forEach(it => {
+          const wears = Number(it.wearCount) || 0;
+          if (wears === 0) score += 8;
+          else if (wears < avgClosetWear) score += 4;
+        });
+
         const avgWarmth =
           candidateItems.reduce((acc, it) => acc + (Number(it.warmth) || 3), 0) /
           candidateItems.length;
@@ -1181,13 +1330,14 @@ export default function App() {
 
       const topItem = bestCandidate[0];
       const bottomItem = bestCandidate[1];
+      const anchorNote = activeAnchor ? ` Fijando tu "${activeAnchor.name}".` : '';
       const learnedNote =
         feedbackHistory.length > 0
           ? ` Adaptado a tus ${feedbackHistory.length} valoraciones previas.`
           : '';
 
       setAiNote(
-        `${topItem.name} con ${bottomItem.name}.${isRaining ? ' Incluye protección para lluvia.' : ''}${learnedNote}`
+        `${topItem.name} con ${bottomItem.name}.${anchorNote}${isRaining ? ' Incluye protección para lluvia.' : ''}${learnedNote}`
       );
       setGenerating(false);
     }, 280);
@@ -1199,10 +1349,11 @@ export default function App() {
     const topItem = currentOutfit[0];
     const bottomItem = currentOutfit[1];
     const comboKey = currentOutfit.map(i => String(i.id)).sort().join('-');
+    const todayStr = new Date().toLocaleDateString('es-ES');
 
     const entry = {
       id: Date.now().toString(),
-      date: new Date().toLocaleDateString('es-ES'),
+      date: todayStr,
       status: 'accepted',
       rating: outfitRating,
       occasion: selectedOccasion,
@@ -1217,10 +1368,22 @@ export default function App() {
     updateUserFeedback([entry, ...feedbackHistory]);
 
     if (sendToLaundry) {
-      const outfitIds = currentOutfit.map(g => g.id);
-      updateUserGarments(garments.map(g => outfitIds.includes(g.id) ? { ...g, inLaundry: true } : g));
+      const outfitIds = new Set(currentOutfit.map(g => String(g.id)));
+      updateUserGarments(
+        garments.map(g =>
+          outfitIds.has(String(g.id))
+            ? {
+                ...g,
+                inLaundry: true,
+                wearCount: (Number(g.wearCount) || 0) + 1,
+                lastWornAt: todayStr
+              }
+            : g
+        )
+      );
       setCurrentOutfit(null);
-      showToast(`¡Look valorado (${outfitRating}/10 ⭐) y prendas enviadas a colada!`);
+      setLockedGarment(null);
+      showToast(`¡Look valorado (${outfitRating}/10 ⭐), usos sumados y enviado a colada!`);
     } else {
       showToast(`¡Guardado en tus favoritos con ${outfitRating}/10 ⭐!`);
     }
@@ -1307,6 +1470,10 @@ export default function App() {
     });
     const targetWarmth = Math.min(5, Math.max(1, Math.round(desiredWarmth + warmthBias)));
 
+    const avgClosetWear =
+      cleanGarments.reduce((acc, g) => acc + (Number(g.wearCount) || 0), 0) /
+      Math.max(1, cleanGarments.length);
+
     let bestCandidate = null;
     let bestScore = -9999;
 
@@ -1343,6 +1510,12 @@ export default function App() {
         .forEach(fb => {
           if (typeof fb.rating === 'number') score += (fb.rating - 5) * 4;
         });
+
+      candidateItems.forEach(it => {
+        const wears = Number(it.wearCount) || 0;
+        if (wears === 0) score += 8;
+        else if (wears < avgClosetWear) score += 4;
+      });
 
       const avgWarmth =
         candidateItems.reduce((acc, it) => acc + (Number(it.warmth) || 3), 0) / candidateItems.length;
@@ -1426,14 +1599,24 @@ export default function App() {
     const planEntry = weeklyPlan[dayId];
     if (!planEntry || !planEntry.garmentIds?.length) return;
     const idSet = new Set(planEntry.garmentIds.map(String));
+    const todayStr = new Date().toLocaleDateString('es-ES');
     updateUserGarments(
-      garments.map(g => (idSet.has(String(g.id)) ? { ...g, inLaundry: true } : g))
+      garments.map(g =>
+        idSet.has(String(g.id))
+          ? {
+              ...g,
+              inLaundry: true,
+              wearCount: (Number(g.wearCount) || 0) + 1,
+              lastWornAt: todayStr
+            }
+          : g
+      )
     );
     updateUserPlanner({
       ...weeklyPlan,
       [dayId]: { ...planEntry, completed: true }
     });
-    showToast('¡Look usado hoy! Prendas enviadas a la cesta de colada.');
+    showToast('¡Look usado hoy! Usos actualizados y prendas en colada.');
   };
 
   const clearPlannedDay = (dayId) => {
@@ -1443,11 +1626,49 @@ export default function App() {
     showToast('Día liberado del calendario');
   };
 
-  // Prendas filtradas en la vista de Armario (Categoría + Buscador Editorial)
+  // --- Generador de Maleta de Viaje (Cápsula Inteligente) ---
+  const generateTravelCapsule = (days = tripDays, occ = tripOccasion) => {
+    const clean = garments.filter(g => !g.inLaundry);
+    const scoreForTrip = (g) => {
+      let s = 0;
+      if (g.occasion?.includes(occ)) s += 15;
+      s -= Math.abs((Number(g.warmth) || 3) - desiredWarmth) * 3;
+      const neutralColors = ['negro', 'blanco', 'gris', 'beige', 'azul marino'];
+      if (neutralColors.includes((g.color || '').toLowerCase())) s += 6;
+      return s;
+    };
+
+    const bySlot = (slot) =>
+      clean
+        .filter(g => getSlotFromType(g.subcategory, g.category) === slot)
+        .sort((a, b) => scoreForTrip(b) - scoreForTrip(a));
+
+    const topsNeeded = Math.min(Math.max(2, days), 5);
+    const bottomsNeeded = Math.min(Math.max(1, Math.ceil(days / 2)), 3);
+    const shoesNeeded = days >= 4 ? 2 : 1;
+
+    const selectedTops = bySlot('Top').slice(0, topsNeeded);
+    const selectedBottoms = bySlot('Bottom').slice(0, bottomsNeeded);
+    const selectedShoes = bySlot('Footwear').slice(0, shoesNeeded);
+    const selectedOuter = desiredWarmth >= 3 || isRaining ? bySlot('Outerwear').slice(0, 1) : [];
+
+    const capsule = [...selectedTops, ...selectedBottoms, ...selectedShoes, ...selectedOuter];
+    if (capsule.length < 3) {
+      showToast('Añade o lava más prendas para armar tu maleta cápsula.');
+      return;
+    }
+    setCapsuleItems(capsule);
+    showToast(`🧳 Maleta cápsula de ${capsule.length} prendas creada para ${days} días`);
+  };
+
+  // Prendas filtradas en la vista de Armario (Categoría, Olvidadas 0 usos + Buscador Editorial)
   const filteredGarments = garments.filter(g => {
     const matchesCategory =
-      selectedFilter === 'ALL' ||
-      (g.subcategory || getDefaultSubcategory(g.category)) === selectedFilter;
+      selectedFilter === 'ALL'
+        ? true
+        : selectedFilter === 'UNWORN'
+        ? (Number(g.wearCount) || 0) === 0
+        : (g.subcategory || getDefaultSubcategory(g.category)) === selectedFilter;
     const q = searchQuery.trim().toLowerCase();
     const matchesSearch =
       !q ||
@@ -1459,6 +1680,15 @@ export default function App() {
 
   const laundryCount = garments.filter(g => g.inLaundry).length;
   const plannedDaysCount = WEEK_DAYS.filter(d => weeklyPlan[d.id]?.garmentIds?.length > 0).length;
+  const unwornCount = garments.filter(g => (Number(g.wearCount) || 0) === 0).length;
+  const activeClosetPercent =
+    garments.length > 0
+      ? Math.round(((garments.length - unwornCount) / garments.length) * 100)
+      : 0;
+  const topWornGarment =
+    garments.length > 0
+      ? [...garments].sort((a, b) => (Number(b.wearCount) || 0) - (Number(a.wearCount) || 0))[0]
+      : null;
 
   // ============================================================================
   // PANTALLA DE ACCESO MODERNA Y RÁPIDA (CON PERFILES DE 1 CLIC)
@@ -1802,17 +2032,17 @@ export default function App() {
         </button>
       </header>
 
-      {/* Modal de Ficha Morfológica y Perfil para Tiendas */}
+      {/* Modal de Ficha Morfológica y Perfil Personal */}
       {showProfileModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl border border-slate-100">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <div>
                 <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-                  <ShoppingBag className="w-5 h-5 text-indigo-600" /> Mi Perfil y Medidas
+                  <User className="w-5 h-5 text-indigo-600" /> Mi Perfil y Medidas
                 </h3>
                 <p className="text-[11px] text-slate-500">
-                  Para recomendarte prendas y tallas exactas de tiendas
+                  Ficha morfológica privada cifrada con AES-256 en tu dispositivo
                 </p>
               </div>
               <button
@@ -1902,7 +2132,7 @@ export default function App() {
 
               {estimateRecommendedSize(currentUser.weightKg, currentUser.heightCm, currentUser.gender) && (
                 <div className="p-3 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-between text-xs">
-                  <span className="font-semibold text-indigo-950">Talla recomendada en tiendas:</span>
+                  <span className="font-semibold text-indigo-950">Tu talla orientativa:</span>
                   <span className="font-extrabold text-indigo-700 bg-white px-2.5 py-1 rounded-xl border border-indigo-200">
                     {estimateRecommendedSize(currentUser.weightKg, currentUser.heightCm, currentUser.gender)}
                   </span>
@@ -1966,6 +2196,34 @@ export default function App() {
         <main className="p-5 flex-1 space-y-5">
           {/* Panel de Selección Rápida */}
           <section className="bg-white p-5 rounded-3xl shadow-sm border border-slate-200/70 space-y-5">
+            {/* Píldora de Prenda Ancla si el usuario fijó una prenda desde Mi Armario */}
+            {lockedGarment && (
+              <div className="p-3 rounded-2xl bg-indigo-50/90 border border-indigo-200 flex items-center justify-between gap-2.5">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <img
+                    src={lockedGarment.image}
+                    alt={lockedGarment.name}
+                    className="w-9 h-9 rounded-xl object-cover border border-indigo-300 shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-600">
+                      📌 Prenda Ancla Fijada
+                    </p>
+                    <p className="text-xs font-bold text-slate-900 truncate">
+                      {lockedGarment.name}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setLockedGarment(null)}
+                  className="px-2.5 py-1 rounded-xl bg-white hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-slate-200 text-[11px] font-bold shrink-0 transition-colors"
+                >
+                  Soltar ✕
+                </button>
+              </div>
+            )}
+
             {/* 1. ¿Para qué ocasión? */}
             <div className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
@@ -2034,7 +2292,7 @@ export default function App() {
 
             {/* Botón Principal de Generar */}
             <button
-              onClick={generateOutfit}
+              onClick={() => generateOutfit()}
               disabled={generating}
               className="w-full py-4 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 active:scale-[0.99] text-white font-bold rounded-2xl text-sm flex justify-center items-center gap-2 shadow-lg shadow-indigo-600/25 transition-all"
             >
@@ -2043,7 +2301,13 @@ export default function App() {
               ) : (
                 <Sparkles className="w-5 h-5" />
               )}
-              <span>{generating ? 'Combinando tu ropa...' : 'Recomendarme mi Outfit de Hoy'}</span>
+              <span>
+                {generating
+                  ? 'Combinando tu ropa...'
+                  : lockedGarment
+                  ? `Combinar mi "${lockedGarment.name}"`
+                  : 'Recomendarme mi Outfit de Hoy'}
+              </span>
             </button>
           </section>
 
@@ -2058,7 +2322,7 @@ export default function App() {
                   </p>
                 </div>
                 <button
-                  onClick={generateOutfit}
+                  onClick={() => generateOutfit()}
                   className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-xl text-xs font-bold flex items-center gap-1"
                   title="Generar otra combinación completa"
                 >
@@ -2563,11 +2827,118 @@ export default function App() {
               </section>
             );
           })()}
+
+          {/* Generador de Maleta de Viaje (Cápsula Inteligente) */}
+          <section className="bg-slate-900 rounded-3xl p-5 border border-slate-800 shadow-lg space-y-4 text-slate-100">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
+                  <Briefcase className="w-4 h-4 text-indigo-400" />
+                  <span>🧳 Maleta Cápsula de Viaje IA</span>
+                </h3>
+                <p className="text-[11px] text-slate-400">
+                  Mínimas prendas de tu armario que combinan todas entre sí
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCapsuleBuilder(!showCapsuleBuilder)}
+                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-indigo-500/30 text-[11px] font-bold transition-colors"
+              >
+                {showCapsuleBuilder ? 'Ocultar' : 'Preparar Maleta'}
+              </button>
+            </div>
+
+            {showCapsuleBuilder && (
+              <div className="space-y-3.5 pt-2 border-t border-slate-800">
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-400">Duración del viaje</label>
+                    <div className="grid grid-cols-4 gap-1">
+                      {[2, 3, 5, 7].map(d => (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => setTripDays(d)}
+                          className={`py-1.5 rounded-xl text-xs font-extrabold border transition-all ${
+                            tripDays === d
+                              ? 'bg-indigo-600 text-white border-indigo-500'
+                              : 'bg-slate-800 text-slate-400 border-slate-700'
+                          }`}
+                        >
+                          {d}d
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-400">Estilo principal</label>
+                    <div className="grid grid-cols-3 gap-1">
+                      {OCCASIONS.map(occ => (
+                        <button
+                          key={occ.id}
+                          type="button"
+                          onClick={() => setTripOccasion(occ.id)}
+                          className={`py-1.5 rounded-xl text-[10px] font-extrabold border transition-all ${
+                            tripOccasion === occ.id
+                              ? 'bg-indigo-600 text-white border-indigo-500'
+                              : 'bg-slate-800 text-slate-400 border-slate-700'
+                          }`}
+                        >
+                          {occ.id === 'Work' ? 'Trabajo' : occ.id === 'Going Out' ? 'Ocio' : 'Sport'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => generateTravelCapsule(tripDays, tripOccasion)}
+                  className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md transition-all"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span>Seleccionar Cápsula para {tripDays} días</span>
+                </button>
+
+                {capsuleItems.length > 0 && (
+                  <div className="space-y-2.5 pt-1">
+                    <div className="flex justify-between items-center text-[11px] text-indigo-300 font-bold">
+                      <span>✨ {capsuleItems.length} prendas seleccionadas:</span>
+                      <button
+                        type="button"
+                        onClick={() => setCapsuleItems([])}
+                        className="text-slate-400 hover:text-rose-400"
+                      >
+                        Limpiar
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {capsuleItems.map(item => (
+                        <div
+                          key={item.id}
+                          className="bg-slate-800/90 rounded-xl p-1.5 border border-slate-700/80 flex flex-col gap-1"
+                        >
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className="w-full h-16 object-cover rounded-lg"
+                          />
+                          <p className="text-[10px] font-bold text-slate-200 truncate">{item.name}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
         </main>
       )}
 
       {/* =====================================================================
-          VISTA 2: MI ARMARIO (DISEÑO EDITORIAL, BUSCADOR Y TARJETAS PREMIUM)
+          VISTA 2: MI ARMARIO (DISEÑO EDITORIAL, ANALÍTICA Y TARJETAS PREMIUM)
       ====================================================================== */}
       {activeTab === 'closet' && (
         <main className="p-5 flex-1 space-y-4">
@@ -2585,6 +2956,49 @@ export default function App() {
               <Camera className="w-4 h-4" /> + Añadir Prenda
             </button>
           </div>
+
+          {/* Barra Compacta de Analítica de Uso del Armario */}
+          {garments.length > 0 && (
+            <div className="grid grid-cols-3 gap-2 bg-slate-900 text-slate-100 p-3 rounded-2xl border border-slate-800 shadow-sm">
+              <div className="bg-slate-800/80 rounded-xl p-2.5 border border-slate-700/70">
+                <p className="text-[10px] text-slate-400 font-bold uppercase">Uso Activo</p>
+                <p className="text-sm font-extrabold text-emerald-400 mt-0.5">
+                  {activeClosetPercent}%
+                </p>
+                <p className="text-[10px] text-slate-400 truncate">de tu armario</p>
+              </div>
+
+              <div className="bg-slate-800/80 rounded-xl p-2.5 border border-slate-700/70">
+                <p className="text-[10px] text-slate-400 font-bold uppercase">Más Usada</p>
+                <p className="text-xs font-extrabold text-indigo-300 truncate mt-0.5">
+                  {topWornGarment && (Number(topWornGarment.wearCount) || 0) > 0
+                    ? topWornGarment.name
+                    : 'Aún sin usos'}
+                </p>
+                <p className="text-[10px] text-slate-400">
+                  {topWornGarment ? `${Number(topWornGarment.wearCount) || 0} puestas` : '0 puestas'}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setSelectedFilter(selectedFilter === 'UNWORN' ? 'ALL' : 'UNWORN')
+                }
+                className={`rounded-xl p-2.5 border text-left transition-all ${
+                  selectedFilter === 'UNWORN'
+                    ? 'bg-amber-500/20 border-amber-400 text-amber-200'
+                    : 'bg-slate-800/80 border-slate-700/70 hover:border-amber-500/50'
+                }`}
+              >
+                <p className="text-[10px] text-amber-400 font-bold uppercase">Olvidadas</p>
+                <p className="text-sm font-extrabold text-white mt-0.5">{unwornCount}</p>
+                <p className="text-[10px] text-slate-400 truncate">
+                  {selectedFilter === 'UNWORN' ? 'Ver todo ✕' : 'Filtrar 0 usos →'}
+                </p>
+              </button>
+            </div>
+          )}
 
           {/* Buscador rápido por nombre, color o categoría */}
           <div className="relative">
@@ -2618,6 +3032,16 @@ export default function App() {
               }`}
             >
               Todo ({garments.length})
+            </button>
+            <button
+              onClick={() => setSelectedFilter('UNWORN')}
+              className={`px-3.5 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1 ${
+                selectedFilter === 'UNWORN'
+                  ? 'bg-amber-500 text-slate-950 shadow-sm'
+                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              <span>✨ Olvidadas ({unwornCount})</span>
             </button>
             {GARMENT_TYPES.map(type => {
               const count = garments.filter(
@@ -2715,6 +3139,14 @@ export default function App() {
                           {g.inLaundry ? 'En Colada' : 'Limpia'}
                         </span>
 
+                        {/* Contador de Puestas / Usos */}
+                        <span
+                          className="absolute top-2.5 right-2.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-900/80 text-indigo-200 backdrop-blur-md border border-white/10"
+                          title={g.lastWornAt ? `Último uso: ${g.lastWornAt}` : 'Aún sin estrenar'}
+                        >
+                          🔄 {Number(g.wearCount) || 0}
+                        </span>
+
                         {/* Badge Flotante Subcategoría */}
                         <span className="absolute bottom-2 left-2.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-900/80 text-slate-100 backdrop-blur-md border border-white/10 flex items-center gap-1">
                           <span>{typeObj?.emoji}</span>
@@ -2784,29 +3216,41 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Pie de Acciones: Colada y Eliminar */}
-                    <div className="px-3.5 pb-3.5 pt-1 flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => toggleLaundry(g.id)}
-                        className={`flex-1 py-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all ${
-                          g.inLaundry
-                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
-                            : 'bg-slate-700/70 text-slate-200 hover:bg-slate-700 border border-slate-600/50'
-                        }`}
-                      >
-                        <WashingMachine className="w-3.5 h-3.5" />
-                        <span>{g.inLaundry ? 'Lavar' : 'Colada'}</span>
-                      </button>
+                    {/* Pie de Acciones: Combinar (Prenda Ancla), Colada y Eliminar */}
+                    <div className="px-3.5 pb-3.5 pt-1 space-y-1.5">
+                      {!g.inLaundry && (
+                        <button
+                          type="button"
+                          onClick={() => combineWithGarment(g)}
+                          className="w-full py-1.5 rounded-xl bg-indigo-600/90 hover:bg-indigo-500 text-white text-[11px] font-extrabold flex items-center justify-center gap-1 shadow-sm transition-all"
+                        >
+                          <Sparkles className="w-3 h-3" />
+                          <span>Combinar esta prenda</span>
+                        </button>
+                      )}
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => toggleLaundry(g.id)}
+                          className={`flex-1 py-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all ${
+                            g.inLaundry
+                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
+                              : 'bg-slate-700/70 text-slate-200 hover:bg-slate-700 border border-slate-600/50'
+                          }`}
+                        >
+                          <WashingMachine className="w-3.5 h-3.5" />
+                          <span>{g.inLaundry ? 'Lavar' : 'Colada'}</span>
+                        </button>
 
-                      <button
-                        type="button"
-                        onClick={() => deleteGarment(g.id)}
-                        title="Eliminar prenda del armario"
-                        className="p-2 rounded-xl bg-rose-500/15 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/25 transition-all"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteGarment(g.id)}
+                          title="Eliminar prenda del armario"
+                          className="p-2 rounded-xl bg-rose-500/15 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/25 transition-all"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -2880,7 +3324,7 @@ export default function App() {
       )}
 
       {/* =====================================================================
-          MODAL RÁPIDO PARA AÑADIR PRENDA CON CÁMARA EN SEGUNDOS
+          MODAL RÁPIDO PARA AÑADIR PRENDA CON CÁMARA EN SEGUNDOS (MODO RÁFAGA)
       ====================================================================== */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -2935,7 +3379,7 @@ export default function App() {
               </div>
             )}
 
-            <form onSubmit={handleSaveGarment} className="space-y-4">
+            <form onSubmit={(e) => handleSaveGarment(e, false)} className="space-y-4">
               {/* 1. Foto con Cámara en Vivo o Galería */}
               <div>
                 {cameraActive ? (
@@ -3154,12 +3598,21 @@ export default function App() {
                 })}
               </div>
 
-              <button
-                type="submit"
-                className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl text-sm flex justify-center items-center gap-2 shadow-lg shadow-indigo-600/25 transition-all"
-              >
-                <Check className="w-4 h-4" /> Guardar en mi Armario
-              </button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  type="submit"
+                  className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl text-xs flex justify-center items-center gap-1.5 shadow-lg shadow-indigo-600/25 transition-all"
+                >
+                  <Check className="w-4 h-4" /> Guardar Prenda
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => handleSaveGarment(e, true)}
+                  className="w-full py-3.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold rounded-2xl text-xs flex justify-center items-center gap-1.5 transition-all"
+                >
+                  <Camera className="w-4 h-4" /> Guardar y + Otra Foto
+                </button>
+              </div>
             </form>
           </div>
         </div>
